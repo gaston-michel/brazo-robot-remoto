@@ -1,0 +1,41 @@
+ports:
+
+  # Puerto USB virtual al que está conectado el servidor PC
+  pc: '/dev/ttyUSB0'
+
+  # Puerto USB virtual al que está conectado el Arduino Mega
+  mega: '/dev/ttyACM0'
+
+  # Baudrate y timeout de lectura/escritura serial
+  baudrate: 115200  # Debe coincidir con Serial1.begin() en el Mega
+  timeout: 1.0      # Tiempo de espera en segundos para read/write
+
+# Configuración de ejes para conversión grados→pasos
+
+axes:
+  '1':
+    steps\_per\_rev: 2000  # Pasos por revolución (Nema24 / TB6600)
+    gear\_ratio: 1        # Relación de reducción (1:1)
+  '2':
+    steps\_per\_rev: 2000
+    gear\_ratio: 1
+  '3':
+    steps\_per\_rev: 200   # Nema17 base
+    gear\_ratio: 5        # Reductora 5:1
+  '4':
+    steps\_per\_rev: 200
+    gear\_ratio: 5
+  '5':
+    steps\_per\_rev: 200
+    gear\_ratio: 5
+  '6':
+    steps\_per\_rev: 200
+    gear\_ratio: 5
+
+# Opcional: parámetros de perfil por defecto (se pueden cambiar en tiempo de ejecución)
+
+# profile:
+
+# default\_speed: 1200    # Pasos por segundo
+
+# default\_accel: 500     # Pasos por segundo^2

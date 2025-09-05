@@ -1,0 +1,26 @@
+# Python cache y archivos compilados
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Entornos virtuales
+venv/
+.env
+.env.*
+
+# Logs y bases de datos
+*.log
+*.sqlite3
+
+# Archivos de configuración del editor
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Archivos temporales y de sistema
+*.bak
+*.swp
+.DS_Store
+Thumbs.db

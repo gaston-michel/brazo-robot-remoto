@@ -1,0 +1,7 @@
+# Archivos de configuración del editor
+.vscode/
+.code-workspace
+.idea/
+*.sublime-project
+*.sublime-workspace
+mega-firmware.code-workspace

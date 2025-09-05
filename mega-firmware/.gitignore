@@ -1,0 +1,21 @@
+# Archivos de compilación
+*.hex
+*.elf
+*.bin
+*.eep
+*.map
+*.lst
+
+# Archivos temporales y backups
+*.tmp
+*.bak
+*.dmp
+*.log
+
+# Paquetes y comprimidos
+*.tar
+*.zip
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db

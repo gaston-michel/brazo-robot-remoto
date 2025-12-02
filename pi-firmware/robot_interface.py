@@ -15,26 +15,37 @@ SERIAL_PORT = '/dev/ttyACM0' # Adjust if needed
 class RobotApp:
     def __init__(self):
         # Init Display
-        self.serial_spi = spi(port=0, device=0, gpio_DC=24, gpio_RST=25)
-        # Rotate 1 is landscape, but we mirror in software if needed. 
-        # Based on previous test, we might need manual flip.
-        self.device = ili9486(self.serial_spi, rotate=1)
-        
-        # Init Touch
-        self.touch = TouchInput(TOUCH_DEVICE_PATH)
-        
-        # Init Robot Client
-        self.client = RobotClient(port=SERIAL_PORT)
-        
-        # Load Resources
-        Theme.load_fonts()
-        
-        # UI State
-        self.current_screen_idx = 0
-        self.screens = []
-        self.running = True
-        
-        self._init_ui()
+        # On Pi 5, sometimes we get spidev10.0 or similar weirdness, or we need to force it.
+        # But usually port=0, device=0 is correct if config is right.
+        # If spidev0.0 is missing, we might need 'dtoverlay=spi0-0' in config.txt
+        try:
+            self.serial_spi = spi(port=0, device=0, gpio_DC=24, gpio_RST=25)
+        except Exception as e:
+            print(f"Failed to open SPI0.0: {e}")
+            print("Trying SPI10.0 (Pi 5 software SPI?)...")
+            try:
+                self.serial_spi = spi(port=10, device=0, gpio_DC=24, gpio_RST=25)
+            except:
+                raise e
+            # Rotate 1 is landscape, but we mirror in software if needed. 
+            # Based on previous test, we might need manual flip.
+            self.device = ili9486(self.serial_spi, rotate=1)
+            
+            # Init Touch
+            self.touch = TouchInput(TOUCH_DEVICE_PATH)
+            
+            # Init Robot Client
+            self.client = RobotClient(port=SERIAL_PORT)
+            
+            # Load Resources
+            Theme.load_fonts()
+            
+            # UI State
+            self.current_screen_idx = 0
+            self.screens = []
+            self.running = True
+            
+            self._init_ui()
 
     def _init_ui(self):
         # --- 1. Status Screen ---

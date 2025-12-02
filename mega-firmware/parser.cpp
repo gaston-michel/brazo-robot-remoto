@@ -37,7 +37,7 @@ void parseLine(const String &line) {
 
     case 'E':  // Emergency stop
       emergencyStop();
-      Serial1.print("OK\n");
+      Serial.print("OK\n");
       break;
 
     case 'K':  // Kill axis: K<eje>
@@ -49,12 +49,12 @@ void parseLine(const String &line) {
       break;
 
     default:
-      Serial1.print("ERR1\n");  // BadCmd
+      Serial.print("ERR1\n");  // BadCmd
       ok = false;
       break;
   }
 
   if (ok && cmd != 'S' && cmd != 'E') {
-    Serial1.print("OK\n");
+    Serial.print("OK\n");
   }
 }

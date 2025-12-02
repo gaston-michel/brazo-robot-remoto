@@ -1,5 +1,6 @@
 #include "telemetry.h"
 #include "config.h"
+#include "motion.h"
 
 void initTelemetry() {
   // Nothing specific to init for telemetry yet
@@ -36,5 +37,5 @@ void sendTelemetry() {
   }
 
   msg += "\n";
-  Serial1.print(msg);
+  Serial.print(msg);
 }

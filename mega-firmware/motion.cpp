@@ -4,7 +4,7 @@
 
 // Create AccelStepper objects for each axis
 // DRIVER mode: STEP pin, DIR pin
-static AccelStepper steppers[6] = {
+AccelStepper steppers[6] = {
   AccelStepper(AccelStepper::DRIVER, STEP_PINS[0], DIR_PINS[0]),
   AccelStepper(AccelStepper::DRIVER, STEP_PINS[1], DIR_PINS[1]),
   AccelStepper(AccelStepper::DRIVER, STEP_PINS[2], DIR_PINS[2]),
@@ -51,9 +51,9 @@ void updateMotors() {
       } else if (distanceToGo < 0) {
         // Movimiento negativo: detener (nos acercamos más al límite)
         steppers[i].stop();
-        Serial1.print("ENDSTOP");
-        Serial1.print(i + 1);
-        Serial1.print("\n");
+        Serial.print("ENDSTOP");
+        Serial.print(i + 1);
+        Serial.print("\n");
         wasMoving[i] = false;
         continue;
       } else {
@@ -67,9 +67,9 @@ void updateMotors() {
     steppers[i].run();
     // If it was moving and now stopped, send confirmation
     if (wasMoving[i] && !moving) {
-      Serial1.print("D");
-      Serial1.print(i + 1);
-      Serial1.print("\n");
+      Serial.print("D");
+      Serial.print(i + 1);
+      Serial.print("\n");
     }
     wasMoving[i] = moving;
   }
@@ -82,18 +82,18 @@ void handleMoveRelative(const String &line) {
   long value = line.substring(2).toInt();
 
   if (axis >= 6) {
-    Serial1.print("ERR2\n"); // BadAxis
+    Serial.print("ERR2\n"); // BadAxis
     return;
   }
 
   if (value < 0 && digitalRead(ENDSTOP_MIN_PINS[axis]) == LOW) {
-    Serial1.print("ERR6\n"); // Endstop already active
+    Serial.print("ERR6\n"); // Endstop already active
     return;
   }
 
   long target = steppers[axis].currentPosition() + value;
   if (target < MIN_POSITION_STEPS || target > MAX_POSITION_STEPS) {
-    Serial1.print("ERR4\n");
+    Serial.print("ERR4\n");
     return;
   }
   steppers[axis].move(value);
@@ -105,13 +105,13 @@ void handleMoveAbsolute(const String &line) {
   uint8_t axis = line.charAt(1) - '1';
 
   if (axis >= 6) {
-    Serial1.print("ERR2\n");
+    Serial.print("ERR2\n");
     return;
   }
 
   long pos = line.substring(2).toInt();
   if (pos < MIN_POSITION_STEPS || pos > MAX_POSITION_STEPS) {
-    Serial1.print("ERR4\n");
+    Serial.print("ERR4\n");
     return;
   }
   steppers[axis].moveTo(pos);
@@ -122,7 +122,7 @@ void handleHoming(const String &line) {
   digitalWrite(ENABLE_PIN, LOW);
   uint8_t axis = line.charAt(1) - '1';
   if (axis >= 6) {
-    Serial1.print("ERR2\n");
+    Serial.print("ERR2\n");
     return;
   }
 
@@ -139,7 +139,7 @@ void handleHoming(const String &line) {
   while (digitalRead(ENDSTOP_MIN_PINS[axis]) == HIGH) {
     steppers[axis].run();
     if (millis() - start > HOMING_TIMEOUT_MS) {
-      Serial1.print("ERR5\n"); // Timeout
+      Serial.print("ERR5\n"); // Timeout
       return;
     }
   }
@@ -158,14 +158,14 @@ void handleKillAxis(const String &line) {
   digitalWrite(ENABLE_PIN, LOW);
   uint8_t axis = line.charAt(1) - '1';
   if (axis >= 6) {
-    Serial1.print("ERR2\n");
+    Serial.print("ERR2\n");
     return;
   }
   steppers[axis].stop();
-  // Confirm axis stopped 
-  Serial1.print("D"); 
-  Serial1.print(axis + 1);
-  Serial1.print("\n");
+  // Confirm axis stopped 
+  Serial.print("D"); 
+  Serial.print(axis + 1);
+  Serial.print("\n");
 }
 
 void handleProfile(const String &line) {
@@ -181,7 +181,7 @@ void handleProfile(const String &line) {
       for (uint8_t i = 0; i < 6; i++) steppers[i].setAcceleration(val);
       break;
     default:
-      Serial1.print("ERR1\n"); // BadCmd
+      Serial.print("ERR1\n"); // BadCmd
       return;
   }
 }

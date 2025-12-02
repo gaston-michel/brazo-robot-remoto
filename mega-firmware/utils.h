@@ -12,4 +12,7 @@ void checkTimeouts();
 // Print debug message over Serial (optional separate Serial)
 void debugPrint(const String &msg);
 
+// Update the last command time to reset the watchdog
+void updateLastCommandTime();
+
 #endif // UTILS_H

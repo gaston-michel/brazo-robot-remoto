@@ -9,8 +9,8 @@ void setup() {
   initUtils();
 
   // Puerto serie principal para comunicación con Raspberry Pi
-  Serial1.begin(115200);
-  while (!Serial1) { /* Esperar a que Serial1 esté listo */ }
+  Serial.begin(115200);
+  while (!Serial) { /* Esperar a que Serial esté listo */ }
 
   // Inicializar subsistemas
   initMotion();
@@ -20,8 +20,8 @@ void setup() {
 
 void loop() {
   // 1) Procesar comandos entrantes desde Raspberry Pi
-  if (Serial1.available()) {
-    String line = Serial1.readStringUntil('\n');
+  if (Serial.available()) {
+    String line = Serial.readStringUntil('\n');
     if (line.length() > 0) {
       parseLine(line);
     }

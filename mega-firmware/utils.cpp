@@ -19,8 +19,8 @@ void checkTimeouts() {
   if ((now - lastCommandTime) > MOVE_TIMEOUT_MS) {
     // Timeout occurred: emergency stop
     DEBUG_SERIAL.println("[UTILS] Move timeout, executing emergency stop");
-    // Use Serial1 to notify upstream
-    Serial1.print("ERR5\n");  // Timeout error code
+    // Use Serial to notify upstream
+    Serial.print("ERR5\n");  // Timeout error code
     // Halt all steppers
     digitalWrite(ENABLE_PIN, HIGH);
     lastCommandTime = now;  // reset watchdog

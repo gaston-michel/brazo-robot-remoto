@@ -4,6 +4,8 @@
 #include <Arduino.h>
 #include <AccelStepper.h>
 
+extern AccelStepper steppers[6];
+
 // Initialize motion subsystem and steppers
 void initMotion();
 

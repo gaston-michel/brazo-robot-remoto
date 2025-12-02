@@ -91,15 +91,31 @@ class ArduinoTester:
             
             time.sleep(2)  # Esperar a que se estabilice la conexión
             
-            self.is_connected = True
+            # --- VERIFICACIÓN DE HANDSHAKE ---
+            logging.info("Verificando dispositivo (Handshake)...")
+            self.is_connected = True # Temporalmente True para permitir enviar_comando
+            
+            # Intentar obtener respuesta válida
+            respuesta = self.enviar_comando("S", esperar_respuesta=True)
+            
+            if not respuesta:
+                logging.error("❌ Handshake fallido: El dispositivo no respondió")
+                self.desconectar()
+                return False
+                
+            if not respuesta.startswith("S:"):
+                logging.warning(f"⚠️ Respuesta inesperada durante handshake: {respuesta}")
+            
             logging.info("✅ Conexión exitosa con Arduino Mega")
             return True
             
         except serial.SerialException as e:
             logging.error(f"❌ Error de conexión: {e}")
+            self.is_connected = False
             return False
         except Exception as e:
             logging.error(f"❌ Error inesperado: {e}")
+            self.is_connected = False
             return False
     
     def desconectar(self):

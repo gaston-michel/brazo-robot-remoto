@@ -4,3 +4,4 @@ luma.lcd>=2.9.0
 pillow>=9.0.0
 rpi-lgpio  # For RPi 5 compatibility, replaces RPi.GPIO
 spidev
+evdev

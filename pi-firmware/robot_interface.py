@@ -1,6 +1,6 @@
 import time
 import threading
-from luma.core.interface.serial import spi
+from luma.core.interface.serial import bitbang
 from luma.core.render import canvas
 from luma.lcd.device import ili9486
 from PIL import Image, ImageDraw
@@ -15,21 +15,11 @@ SERIAL_PORT = '/dev/ttyACM0' # Adjust if needed
 class RobotApp:
     def __init__(self):
         # Init Display
-        # On Pi 5, sometimes we get spidev10.0 or similar weirdness, or we need to force it.
-        # But usually port=0, device=0 is correct if config is right.
-        # If spidev0.0 is missing, we might need 'dtoverlay=spi0-0' in config.txt
-        try:
-            self.serial_spi = spi(port=0, device=0, gpio_DC=24, gpio_RST=25)
-        except Exception as e:
-            print(f"Failed to open SPI0.0: {e}")
-            print("Trying SPI10.0 (Pi 5 software SPI?)...")
-            try:
-                self.serial_spi = spi(port=10, device=0, gpio_DC=24, gpio_RST=25)
-            except:
-                raise e
-                
+        # We use Bitbang SPI to avoid conflicts with the Kernel Touch driver
+        # SCLK=11 (GPIO 11), SDA=10 (GPIO 10), CE=8 (GPIO 8), DC=24, RST=25
+        self.serial_spi = bitbang(SCLK=11, SDA=10, CE=8, DC=24, RST=25)
+        
         # Rotate 1 is landscape, but we mirror in software if needed. 
-        # Based on previous test, we might need manual flip.
         self.device = ili9486(self.serial_spi, rotate=1)
         
         # Init Touch

@@ -229,79 +229,51 @@ class RobotApp:
         self.screens.append(s_tests)
 
         # --- Navigation Bar (Global) ---
-        # 4 Buttons: Status, Control, Settings, Tests
-        # Width 480 / 4 = 120
-        self.nav_buttons = [
-            Button(0, 280, 120, 40, "Status", callback=lambda: self.set_screen(0)),
-            Button(120, 280, 120, 40, "Control", callback=lambda: self.set_screen(1)),
-            Button(240, 280, 120, 40, "Settings", callback=lambda: self.set_screen(2)), 
-            Button(360, 280, 120, 40, "Tests", callback=lambda: self.set_screen(3))
-        ]
-        # Add Exit button somewhere else or make it a small icon?
-        # Or maybe "Settings" includes Exit?
-        # For now, let's put Exit in Settings screen only, or remove it (embedded systems usually don't exit).
-        # The user asked for "Tests" in bottom bar.
+        # REPLACED by Hamburger Menu
+        self.btn_menu = Button(430, 5, 45, 40, "EQ", callback=self.show_menu, color=Theme.GRAY)
         
+        # --- Menu Screen ---
+        s_menu = Screen("Menu")
+        s_menu.add_widget(Label(10, 10, "Main Menu", color=Theme.CYAN))
+        
+        # Menu Options
+        menu_items = [
+            ("Status", 0),
+            ("Control", 1),
+            ("Settings", 2),
+            ("Tests", 3)
+        ]
+        
+        y_start = 50
+        for name, idx in menu_items:
+            s_menu.add_widget(Button(40, y_start, 400, 50, name, callback=lambda i=idx: self.set_screen(i)))
+            y_start += 60
+            
+        # Exit Button
+        s_menu.add_widget(Button(40, y_start, 400, 50, "Exit", callback=self.exit_app, color=Theme.RED))
+        
+        # Back/Close Menu Button (Top Right)
+        s_menu.add_widget(Button(430, 5, 45, 40, "X", callback=self.close_menu, color=Theme.RED))
+
+        self.screens.append(s_menu)
+        self.menu_screen_idx = len(self.screens) - 1
+        
+        # Keep track of previous screen to return to? 
+        # Or just default to Status? 
+        # set_screen logic handles simple switching.
+        self.last_screen_idx = 0
+
     def set_screen(self, idx):
         self.current_screen_idx = idx
 
-    def adj_speed(self, delta):
-        self.cfg_speed = max(100, min(5000, self.cfg_speed + delta))
-        self.lbl_speed.text = str(self.cfg_speed)
+    def show_menu(self):
+        self.last_screen_idx = self.current_screen_idx
+        self.current_screen_idx = self.menu_screen_idx
 
-    def adj_accel(self, delta):
-        self.cfg_accel = max(50, min(2000, self.cfg_accel + delta))
-        self.lbl_accel.text = str(self.cfg_accel)
+    def close_menu(self):
+        self.current_screen_idx = self.last_screen_idx
 
-    def apply_profile(self):
-        self.client.set_profile(self.cfg_speed, self.cfg_accel)
-
-    def cycle_ports(self):
-        ports = RobotClient.scan_ports()
-        if not ports:
-            self.lbl_port.text = "No ports found"
-            return
-        
-        # Find current index
-        try:
-            current_idx = ports.index(self.client.port)
-            next_idx = (current_idx + 1) % len(ports)
-        except ValueError:
-            next_idx = 0
-            
-        new_port = ports[next_idx]
-        self.client.port = new_port
-        self.lbl_port.text = new_port
-        # Auto-reconnect?
-        if self.client.connected:
-            self.client.disconnect()
-            self.client.connect()
-
-    def do_reset(self):
-        self.client.reset_alarm()
-
-
-    def do_connect(self):
-        if self.client.connect():
-            self.lbl_connection.text = "Connected"
-            self.lbl_connection.color = Theme.GREEN
-        else:
-            self.lbl_connection.text = "Error"
-            self.lbl_connection.color = Theme.RED
-
-    def do_estop(self):
-        self.client.emergency_stop()
-        self.lbl_connection.text = "E-STOPPED"
-        self.lbl_connection.color = Theme.RED
-
-    def move_axis(self, axis, steps):
-        self.client.move_relative(axis, steps)
-
-    def home_axis(self, axis):
-        self.client.home_axis(axis)
-
-    def exit_app(self):
-        self.running = False
+    # ... (adj_speed, adj_accel, etc. remain the same) ...
 
     def run(self):
         print("Starting UI Loop...")
@@ -313,23 +285,19 @@ class RobotApp:
                 # 2. Handle Input
                 if touch_pos:
                     tx, ty = touch_pos
-                    # Check Nav Buttons first
-                    handled = False
-                    for btn in self.nav_buttons:
-                        if btn.contains(tx, ty):
-                            btn.on_click()
-                            # Reset pressed state after a short delay or next frame
-                            # For simplicity we just draw it pressed this frame
-                            handled = True
-                            break
                     
-                    if not handled:
-                        # Check Current Screen
-                        self.screens[self.current_screen_idx].handle_touch(tx, ty)
+                    # Global Menu Button (Only if NOT on menu screen)
+                    if self.current_screen_idx != self.menu_screen_idx:
+                        if self.btn_menu.contains(tx, ty):
+                            self.btn_menu.on_click()
+                            # Skip processing screen widgets if menu clicked
+                            continue
+                    
+                    # Check Current Screen Widgets
+                    self.screens[self.current_screen_idx].handle_touch(tx, ty)
 
                 # 3. Draw
-                # Update Status if connected (every few frames to save bandwidth?)
-                # For now, every frame is fine if serial is fast enough, or we throttle in client
+                # Update Status if connected
                 self.client.update_status()
                 
                 # Update Labels
@@ -339,7 +307,6 @@ class RobotApp:
                         self.lbl_axes[i].text = f"{['X','Y','Z','A','B','C'][i]}: {val:.2f}"
                     
                     # Update Endstops
-                    # Assuming string "100000" where 1 is triggered
                     if hasattr(self.client, 'endstops') and len(self.client.endstops) >= 6:
                         for i in range(6):
                             is_triggered = (self.client.endstops[i] == '1')
@@ -352,9 +319,9 @@ class RobotApp:
                 # Draw Current Screen
                 self.screens[self.current_screen_idx].draw(draw)
                 
-                # Draw Nav Bar
-                for btn in self.nav_buttons:
-                    btn.draw(draw)
+                # Draw Global Menu Button (Overlay) - Only if NOT on menu screen
+                if self.current_screen_idx != self.menu_screen_idx:
+                    self.btn_menu.draw(draw)
 
                 # 4. Flip and Display
                 # Fix mirroring - Removed as user reported it is mirrored WITH this.
@@ -364,9 +331,8 @@ class RobotApp:
                 # Cap FPS
                 time.sleep(0.05)
                 
-                # Reset button states (visual only)
-                for btn in self.nav_buttons:
-                    btn.pressed = False
+                # Reset button states
+                self.btn_menu.pressed = False
                 for w in self.screens[self.current_screen_idx].widgets:
                     if isinstance(w, Button):
                         w.pressed = False

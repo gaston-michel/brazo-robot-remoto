@@ -94,6 +94,10 @@ class RobotClient:
         ports = glob.glob('/dev/ttyACM*') + glob.glob('/dev/ttyUSB*')
         return ports
 
+    def update_status(self):
+        if not self.connected:
+            return
+
         # Send 'S' command to get status
         # Expected format: "State:IDLE X:0.00 Y:0.00 Z:0.00 A:0.00 B:0.00 C:0.00"
         # Or similar, depending on firmware implementation.

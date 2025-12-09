@@ -125,7 +125,7 @@ class RobotApp:
             self.lbl_axes.append(lbl)
             s_status.add_widget(lbl)
         
-        btn_connect = Button(350, 10, 100, 40, "Connect", callback=self.do_connect)
+        btn_connect = Button(240, 10, 100, 40, "Connect", callback=self.do_connect)
         s_status.add_widget(btn_connect)
         
         btn_estop = Button(350, 200, 100, 60, "E-STOP", callback=self.do_estop, color=Theme.RED)
@@ -244,13 +244,13 @@ class RobotApp:
             ("Tests", 3)
         ]
         
-        y_start = 50
+        y_start = 40
         for name, idx in menu_items:
-            s_menu.add_widget(Button(40, y_start, 400, 50, name, callback=lambda i=idx: self.set_screen(i)))
-            y_start += 60
+            s_menu.add_widget(Button(40, y_start, 400, 40, name, callback=lambda i=idx: self.set_screen(i)))
+            y_start += 50
             
         # Exit Button
-        s_menu.add_widget(Button(40, y_start, 400, 50, "Exit", callback=self.exit_app, color=Theme.RED))
+        s_menu.add_widget(Button(40, y_start, 400, 40, "Exit", callback=self.exit_app, color=Theme.RED))
         
         # Back/Close Menu Button (Top Right)
         s_menu.add_widget(Button(430, 5, 45, 40, "X", callback=self.close_menu, color=Theme.RED))

@@ -137,21 +137,35 @@ class RobotApp:
 
         # --- 2. Control Screen ---
         s_control = Screen("Control")
-        s_control.add_widget(Label(10, 10, "Manual Control", color=Theme.YELLOW))
+        s_control.add_widget(Label(10, 5, "Manual Control", color=Theme.YELLOW))
         
-        # Axis Controls (Simplified for demo)
+        # Axis Controls
         # 2 columns of 3 axes
-        axes = ["X", "Y", "Z", "A", "B", "C"]
-        for i, name in enumerate(axes):
+        # Renamed as requested
+        axes_labels = ["Base", "Shoulder", "Elbow", "Wrist Pitch", "Wrist Roll", "Effector"]
+        
+        for i, name in enumerate(axes_labels):
             col = i % 2
             row = i // 2
-            x_base = 10 + col * 240
-            y_base = 50 + row * 80
             
-            s_control.add_widget(Label(x_base, y_base, f"Axis {name}"))
-            s_control.add_widget(Button(x_base, y_base+30, 60, 40, "-", callback=lambda idx=i: self.move_axis(idx, -100)))
-            s_control.add_widget(Button(x_base+70, y_base+30, 60, 40, "+", callback=lambda idx=i: self.move_axis(idx, 100)))
-            s_control.add_widget(Button(x_base+140, y_base+30, 60, 40, "H", callback=lambda idx=i: self.home_axis(idx), color=Theme.DARK_GRAY))
+            # Adjusted layout to fit 320px height with Nav bar at 280
+            # Column width: 240
+            # Row height: 75 (was 80)
+            # Start Y: 35 (was 50)
+            
+            x_base = 10 + col * 240
+            y_base = 35 + row * 75
+            
+            # Label
+            s_control.add_widget(Label(x_base, y_base, name, font=Theme.FONT_SMALL))
+            
+            # Buttons (Smaller height: 35 instead of 40)
+            # - Move Negative
+            s_control.add_widget(Button(x_base, y_base+20, 60, 35, "-", callback=lambda idx=i: self.move_axis(idx, -100)))
+            # + Move Positive
+            s_control.add_widget(Button(x_base+70, y_base+20, 60, 35, "+", callback=lambda idx=i: self.move_axis(idx, 100)))
+            # H Home
+            s_control.add_widget(Button(x_base+140, y_base+20, 60, 35, "H", callback=lambda idx=i: self.home_axis(idx), color=Theme.DARK_GRAY))
 
         self.screens.append(s_control)
 

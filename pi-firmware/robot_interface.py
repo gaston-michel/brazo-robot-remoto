@@ -203,15 +203,45 @@ class RobotApp:
 
         self.screens.append(s_settings)
 
+        # --- 4. Tests Screen ---
+        s_tests = Screen("Tests")
+        s_tests.add_widget(Label(10, 5, "Diagnostics", color=Theme.YELLOW))
+        
+        # Endstop Indicators
+        s_tests.add_widget(Label(20, 50, "Endstops:"))
+        self.lbl_endstops = []
+        for i in range(6):
+            # Small "LED" indicators
+            # We use a Label "O" or similar, changing color
+            x_pos = 120 + i * 40
+            lbl = Label(x_pos, 50, "O", color=Theme.GRAY)
+            self.lbl_endstops.append(lbl)
+            s_tests.add_widget(lbl)
+            # Axis label below
+            s_tests.add_widget(Label(x_pos, 70, str(i+1), font=Theme.FONT_SMALL))
+
+        # Test Patterns
+        s_tests.add_widget(Label(20, 120, "Test Patterns:"))
+        s_tests.add_widget(Button(20, 150, 140, 50, "Square Test", callback=lambda: self.client.run_test(1)))
+        s_tests.add_widget(Button(180, 150, 140, 50, "Circle Test", callback=lambda: self.client.run_test(2)))
+        s_tests.add_widget(Button(20, 210, 140, 50, "Full Range", callback=lambda: self.client.run_test(3)))
+        
+        self.screens.append(s_tests)
+
         # --- Navigation Bar (Global) ---
-        # We handle this in the main loop or as a special widget overlay
+        # 4 Buttons: Status, Control, Settings, Tests
+        # Width 480 / 4 = 120
         self.nav_buttons = [
             Button(0, 280, 120, 40, "Status", callback=lambda: self.set_screen(0)),
             Button(120, 280, 120, 40, "Control", callback=lambda: self.set_screen(1)),
             Button(240, 280, 120, 40, "Settings", callback=lambda: self.set_screen(2)), 
-            Button(360, 280, 120, 40, "Exit", callback=self.exit_app, color=Theme.DARK_GRAY)
+            Button(360, 280, 120, 40, "Tests", callback=lambda: self.set_screen(3))
         ]
-
+        # Add Exit button somewhere else or make it a small icon?
+        # Or maybe "Settings" includes Exit?
+        # For now, let's put Exit in Settings screen only, or remove it (embedded systems usually don't exit).
+        # The user asked for "Tests" in bottom bar.
+        
     def set_screen(self, idx):
         self.current_screen_idx = idx
 
@@ -307,6 +337,13 @@ class RobotApp:
                     self.lbl_state.text = f"State: {self.client.status}"
                     for i, val in enumerate(self.client.axes):
                         self.lbl_axes[i].text = f"{['X','Y','Z','A','B','C'][i]}: {val:.2f}"
+                    
+                    # Update Endstops
+                    # Assuming string "100000" where 1 is triggered
+                    if hasattr(self.client, 'endstops') and len(self.client.endstops) >= 6:
+                        for i in range(6):
+                            is_triggered = (self.client.endstops[i] == '1')
+                            self.lbl_endstops[i].color = Theme.RED if is_triggered else Theme.GREEN
                 
                 # Create blank image
                 image = Image.new("RGB", (480, 320), "black")

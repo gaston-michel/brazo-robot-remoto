@@ -71,5 +71,38 @@ class RobotClient:
         return self.send_command("E")
 
     def update_status(self):
-        # Ideally we'd parse 'S' command response here
-        pass
+        if not self.connected:
+            return
+
+        # Send 'S' command to get status
+        # Expected format: "State:IDLE X:0.00 Y:0.00 Z:0.00 A:0.00 B:0.00 C:0.00"
+        # Or similar, depending on firmware implementation.
+        # Let's assume the firmware returns something like that.
+        
+        with self.lock:
+            try:
+                self.serial.write(b"S\n")
+                response = self.serial.readline().decode('utf-8').strip()
+                
+                if not response:
+                    return
+
+                # Parse response
+                # Example: "State:IDLE X:10.00 Y:20.00 ..."
+                parts = response.split(' ')
+                for part in parts:
+                    if ':' in part:
+                        key, val = part.split(':')
+                        if key == "State":
+                            self.status = val
+                        elif key in ["X", "Y", "Z", "A", "B", "C"]:
+                            # Map axis name to index
+                            idx = ["X", "Y", "Z", "A", "B", "C"].index(key)
+                            try:
+                                self.axes[idx] = float(val)
+                            except ValueError:
+                                pass
+            except Exception as e:
+                print(f"Status update error: {e}")
+                # Don't disconnect immediately on read error, might be noise
+                pass

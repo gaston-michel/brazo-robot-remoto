@@ -109,13 +109,31 @@ class RobotApp:
         self.lbl_connection = Label(10, 40, "Disconnected", color=Theme.RED)
         s_status.add_widget(self.lbl_connection)
         
+        self.lbl_state = Label(200, 40, "State: ???", color=Theme.YELLOW)
+        s_status.add_widget(self.lbl_state)
+        
+        # Coordinate Labels
+        self.lbl_axes = []
+        axes_names = ["X", "Y", "Z", "A", "B", "C"]
+        for i, name in enumerate(axes_names):
+            # 2 columns: X,Y,Z left; A,B,C right
+            col = i // 3
+            row = i % 3
+            x_pos = 10 + col * 160
+            y_pos = 80 + row * 30
+            lbl = Label(x_pos, y_pos, f"{name}: 0.00", color=Theme.WHITE)
+            self.lbl_axes.append(lbl)
+            s_status.add_widget(lbl)
+        
         btn_connect = Button(350, 10, 100, 40, "Connect", callback=self.do_connect)
         s_status.add_widget(btn_connect)
         
-        btn_estop = Button(50, 100, 380, 150, "E-STOP", callback=self.do_estop, color=Theme.RED)
+        btn_estop = Button(350, 200, 100, 60, "E-STOP", callback=self.do_estop, color=Theme.RED)
         s_status.add_widget(btn_estop)
         
         self.screens.append(s_status)
+
+        # ... (Control Screen remains similar) ...
 
         # --- 2. Control Screen ---
         s_control = Screen("Control")
@@ -196,6 +214,16 @@ class RobotApp:
                         self.screens[self.current_screen_idx].handle_touch(tx, ty)
 
                 # 3. Draw
+                # Update Status if connected (every few frames to save bandwidth?)
+                # For now, every frame is fine if serial is fast enough, or we throttle in client
+                self.client.update_status()
+                
+                # Update Labels
+                if self.client.connected:
+                    self.lbl_state.text = f"State: {self.client.status}"
+                    for i, val in enumerate(self.client.axes):
+                        self.lbl_axes[i].text = f"{['X','Y','Z','A','B','C'][i]}: {val:.2f}"
+                
                 # Create blank image
                 image = Image.new("RGB", (480, 320), "black")
                 draw = ImageDraw.Draw(image)

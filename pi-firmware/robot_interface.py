@@ -1,8 +1,5 @@
 import time
 import threading
-from luma.core.interface.serial import bitbang
-from luma.core.render import canvas
-from luma.lcd.device import ili9486
 from PIL import Image, ImageDraw
 
 from ui_framework import Theme, TouchInput, Screen, Button, Label
@@ -211,8 +208,8 @@ class RobotApp:
                     btn.draw(draw)
 
                 # 4. Flip and Display
-                # Fix mirroring
-                image = image.transpose(Image.FLIP_LEFT_RIGHT)
+                # Fix mirroring - Removed as user reported it is mirrored WITH this.
+                # image = image.transpose(Image.FLIP_LEFT_RIGHT)
                 self.device.display(image)
                 
                 # Cap FPS

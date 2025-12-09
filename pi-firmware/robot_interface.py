@@ -169,17 +169,87 @@ class RobotApp:
 
         self.screens.append(s_control)
 
+        # --- 3. Settings Screen ---
+        s_settings = Screen("Settings")
+        s_settings.add_widget(Label(10, 5, "Settings", color=Theme.YELLOW))
+        
+        # Speed Control
+        self.cfg_speed = 1000
+        s_settings.add_widget(Label(20, 50, "Max Speed:"))
+        self.lbl_speed = Label(180, 50, f"{self.cfg_speed}", color=Theme.CYAN)
+        s_settings.add_widget(self.lbl_speed)
+        s_settings.add_widget(Button(140, 45, 35, 35, "-", callback=lambda: self.adj_speed(-100)))
+        s_settings.add_widget(Button(240, 45, 35, 35, "+", callback=lambda: self.adj_speed(100)))
+        
+        # Accel Control
+        self.cfg_accel = 500
+        s_settings.add_widget(Label(20, 100, "Acceleration:"))
+        self.lbl_accel = Label(180, 100, f"{self.cfg_accel}", color=Theme.CYAN)
+        s_settings.add_widget(self.lbl_accel)
+        s_settings.add_widget(Button(140, 95, 35, 35, "-", callback=lambda: self.adj_accel(-50)))
+        s_settings.add_widget(Button(240, 95, 35, 35, "+", callback=lambda: self.adj_accel(50)))
+        
+        # Apply Button
+        s_settings.add_widget(Button(300, 60, 100, 60, "Apply", callback=self.apply_profile, color=Theme.GREEN))
+        
+        # Port Selection
+        s_settings.add_widget(Label(20, 160, "Serial Port:"))
+        self.lbl_port = Label(20, 190, self.client.port, font=Theme.FONT_SMALL, color=Theme.GRAY)
+        s_settings.add_widget(self.lbl_port)
+        s_settings.add_widget(Button(250, 180, 150, 40, "Scan / Cycle", callback=self.cycle_ports))
+        
+        # Unlock / Reset
+        s_settings.add_widget(Button(20, 230, 150, 40, "Unlock / Reset", callback=self.do_reset, color=Theme.YELLOW))
+
+        self.screens.append(s_settings)
+
         # --- Navigation Bar (Global) ---
         # We handle this in the main loop or as a special widget overlay
         self.nav_buttons = [
             Button(0, 280, 120, 40, "Status", callback=lambda: self.set_screen(0)),
             Button(120, 280, 120, 40, "Control", callback=lambda: self.set_screen(1)),
-            Button(240, 280, 120, 40, "Settings", callback=lambda: self.set_screen(0)), # Placeholder
+            Button(240, 280, 120, 40, "Settings", callback=lambda: self.set_screen(2)), 
             Button(360, 280, 120, 40, "Exit", callback=self.exit_app, color=Theme.DARK_GRAY)
         ]
 
     def set_screen(self, idx):
         self.current_screen_idx = idx
+
+    def adj_speed(self, delta):
+        self.cfg_speed = max(100, min(5000, self.cfg_speed + delta))
+        self.lbl_speed.text = str(self.cfg_speed)
+
+    def adj_accel(self, delta):
+        self.cfg_accel = max(50, min(2000, self.cfg_accel + delta))
+        self.lbl_accel.text = str(self.cfg_accel)
+
+    def apply_profile(self):
+        self.client.set_profile(self.cfg_speed, self.cfg_accel)
+
+    def cycle_ports(self):
+        ports = RobotClient.scan_ports()
+        if not ports:
+            self.lbl_port.text = "No ports found"
+            return
+        
+        # Find current index
+        try:
+            current_idx = ports.index(self.client.port)
+            next_idx = (current_idx + 1) % len(ports)
+        except ValueError:
+            next_idx = 0
+            
+        new_port = ports[next_idx]
+        self.client.port = new_port
+        self.lbl_port.text = new_port
+        # Auto-reconnect?
+        if self.client.connected:
+            self.client.disconnect()
+            self.client.connect()
+
+    def do_reset(self):
+        self.client.reset_alarm()
+
 
     def do_connect(self):
         if self.client.connect():

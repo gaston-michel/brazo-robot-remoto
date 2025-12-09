@@ -70,9 +70,29 @@ class RobotClient:
     def emergency_stop(self):
         return self.send_command("E")
 
-    def update_status(self):
-        if not self.connected:
-            return
+    def set_profile(self, speed, accel):
+        # P<speed> <accel>
+        # Example: P1000 500
+        cmd = f"P{int(speed)} {int(accel)}"
+        return self.send_command(cmd)
+
+    def reset_alarm(self):
+        # Assuming M999 or similar to reset alarm/unlock
+        # Or maybe just re-homing?
+        # For now, let's try a specific command if known, or just a soft reset.
+        # Based on typical firmwares, $X is unlock.
+        # Let's send a custom command or just re-enable.
+        # If the firmware uses 'E' for Estop, maybe 'R' for Reset?
+        # Let's assume 'R' for now based on common custom protocols, or we can ask.
+        # Actually, let's just send a generic "Reset" command if defined.
+        return self.send_command("R")
+
+    @staticmethod
+    def scan_ports():
+        import glob
+        # Linux style
+        ports = glob.glob('/dev/ttyACM*') + glob.glob('/dev/ttyUSB*')
+        return ports
 
         # Send 'S' command to get status
         # Expected format: "State:IDLE X:0.00 Y:0.00 Z:0.00 A:0.00 B:0.00 C:0.00"

@@ -34,12 +34,24 @@ class TouchInput:
         self.last_touch_time = 0
         self.touch_down = False
         
-        # Calibration (approximate for 3.5 inch MPI3508/XPT2046)
-        # These might need tuning!
-        self.min_x = 200
-        self.max_x = 3900
-        self.min_y = 200
-        self.max_y = 3900
+        # Calibration based on user data:
+        # TL: (534, 3707), TR: (429, 333)
+        # BL: (3737, 3842), BR: (3737, 372)
+        # Analysis:
+        # Screen X (0-480) moves with Touch Y (3775 -> 350) [Inverted]
+        # Screen Y (0-320) moves with Touch X (480 -> 3737) [Normal]
+        # Conclusion: Axes are SWAPPED.
+        
+        self.swap_xy = True
+        
+        # X Calibration (Maps to Screen Y)
+        self.min_touch_x = 480
+        self.max_touch_x = 3737
+        
+        # Y Calibration (Maps to Screen X)
+        self.min_touch_y = 3775
+        self.max_touch_y = 350
+        
         self.screen_width = 480
         self.screen_height = 320
         
@@ -74,17 +86,26 @@ class TouchInput:
             for event in self.device.read():
                 if event.type == evdev.ecodes.EV_ABS:
                     if event.code == evdev.ecodes.ABS_X:
-                        # Map X (Note: X/Y might be swapped depending on rotation)
-                        # Assuming landscape where Touch X aligns with Screen X
-                        self.x = self._map(event.value, self.min_x, self.max_x, 0, self.screen_width)
+                        self.x = event.value
                     elif event.code == evdev.ecodes.ABS_Y:
-                        self.y = self._map(event.value, self.min_y, self.max_y, 0, self.screen_height)
+                        self.y = event.value
                 elif event.type == evdev.ecodes.EV_KEY:
                     if event.code == evdev.ecodes.BTN_TOUCH:
                         self.touch_down = (event.value == 1)
                         if self.touch_down:
                             self.last_touch_time = time.time()
-                            return (self.x, self.y)
+                            
+                            # Perform Mapping
+                            if self.swap_xy:
+                                # Touch Y -> Screen X
+                                screen_x = self._map(self.y, self.min_touch_y, self.max_touch_y, 0, self.screen_width)
+                                # Touch X -> Screen Y
+                                screen_y = self._map(self.x, self.min_touch_x, self.max_touch_x, 0, self.screen_height)
+                            else:
+                                screen_x = self._map(self.x, self.min_touch_x, self.max_touch_x, 0, self.screen_width)
+                                screen_y = self._map(self.y, self.min_touch_y, self.max_touch_y, 0, self.screen_height)
+                                
+                            return (screen_x, screen_y)
         return None
 
     def _map(self, x, in_min, in_max, out_min, out_max):

@@ -83,7 +83,10 @@ class TouchInput:
         # Non-blocking read
         r, w, x = select.select([self.device.fd], [], [], 0.0)
         if r:
-            for event in self.device.read():
+            events = list(self.device.read())
+            new_touch_detected = False
+            
+            for event in events:
                 if event.type == evdev.ecodes.EV_ABS:
                     if event.code == evdev.ecodes.ABS_X:
                         self.x = event.value
@@ -93,19 +96,22 @@ class TouchInput:
                     if event.code == evdev.ecodes.BTN_TOUCH:
                         self.touch_down = (event.value == 1)
                         if self.touch_down:
-                            self.last_touch_time = time.time()
-                            
-                            # Perform Mapping
-                            if self.swap_xy:
-                                # Touch Y -> Screen X
-                                screen_x = self._map(self.y, self.min_touch_y, self.max_touch_y, 0, self.screen_width)
-                                # Touch X -> Screen Y
-                                screen_y = self._map(self.x, self.min_touch_x, self.max_touch_x, 0, self.screen_height)
-                            else:
-                                screen_x = self._map(self.x, self.min_touch_x, self.max_touch_x, 0, self.screen_width)
-                                screen_y = self._map(self.y, self.min_touch_y, self.max_touch_y, 0, self.screen_height)
-                                
-                            return (screen_x, screen_y)
+                            new_touch_detected = True
+            
+            if new_touch_detected:
+                self.last_touch_time = time.time()
+                
+                # Perform Mapping
+                if self.swap_xy:
+                    # Touch Y -> Screen X
+                    screen_x = self._map(self.y, self.min_touch_y, self.max_touch_y, 0, self.screen_width)
+                    # Touch X -> Screen Y
+                    screen_y = self._map(self.x, self.min_touch_x, self.max_touch_x, 0, self.screen_height)
+                else:
+                    screen_x = self._map(self.x, self.min_touch_x, self.max_touch_x, 0, self.screen_width)
+                    screen_y = self._map(self.y, self.min_touch_y, self.max_touch_x, 0, self.screen_height)
+                    
+                return (screen_x, screen_y)
         return None
 
     def _map(self, x, in_min, in_max, out_min, out_max):

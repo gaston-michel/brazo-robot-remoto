@@ -273,7 +273,62 @@ class RobotApp:
     def close_menu(self):
         self.current_screen_idx = self.last_screen_idx
 
-    # ... (adj_speed, adj_accel, etc. remain the same) ...
+    def adj_speed(self, delta):
+        self.cfg_speed = max(100, min(5000, self.cfg_speed + delta))
+        self.lbl_speed.text = str(self.cfg_speed)
+
+    def adj_accel(self, delta):
+        self.cfg_accel = max(50, min(2000, self.cfg_accel + delta))
+        self.lbl_accel.text = str(self.cfg_accel)
+
+    def apply_profile(self):
+        self.client.set_profile(self.cfg_speed, self.cfg_accel)
+
+    def cycle_ports(self):
+        ports = RobotClient.scan_ports()
+        if not ports:
+            self.lbl_port.text = "No ports found"
+            return
+        
+        # Find current index
+        try:
+            current_idx = ports.index(self.client.port)
+            next_idx = (current_idx + 1) % len(ports)
+        except ValueError:
+            next_idx = 0
+            
+        new_port = ports[next_idx]
+        self.client.port = new_port
+        self.lbl_port.text = new_port
+        # Auto-reconnect?
+        if self.client.connected:
+            self.client.disconnect()
+            self.client.connect()
+
+    def do_reset(self):
+        self.client.reset_alarm()
+
+    def do_connect(self):
+        if self.client.connect():
+            self.lbl_connection.text = "Connected"
+            self.lbl_connection.color = Theme.GREEN
+        else:
+            self.lbl_connection.text = "Error"
+            self.lbl_connection.color = Theme.RED
+
+    def do_estop(self):
+        self.client.emergency_stop()
+        self.lbl_connection.text = "E-STOPPED"
+        self.lbl_connection.color = Theme.RED
+
+    def move_axis(self, axis, steps):
+        self.client.move_relative(axis, steps)
+
+    def home_axis(self, axis):
+        self.client.home_axis(axis)
+
+    def exit_app(self):
+        self.running = False
 
     def run(self):
         print("Starting UI Loop...")

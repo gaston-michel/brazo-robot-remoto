@@ -596,11 +596,56 @@ class RobotApp:
     def on_path_select(self, name):
         # Show Popup Options
         options = [
+            ("Run Path", lambda: self.run_path(name)),
             ("Edit Path", lambda: self.open_path_details(name)), 
             ("Delete Path", lambda: self.delete_path(name))
         ]
-        self.popup = Popup(90, 60, 300, 200, f"Path: {name}", options)
+        self.popup = Popup(90, 60, 300, 250, f"Path: {name}", options) # Increased height
         self.popup.show()
+
+    def run_path(self, name):
+        points = self.path_manager.get_path(name)
+        if not points:
+            print(f"Path {name} is empty.")
+            return
+            
+        print(f"Running Path: {name} with {len(points)} points...")
+        # Start background thread
+        t = threading.Thread(target=self._playback_thread, args=(points,))
+        t.daemon = True
+        t.start()
+
+    def _playback_thread(self, points):
+        # Prevent concurrent runs if needed, or just let it fly
+        for i, point in enumerate(points):
+            if not self.running: break
+            
+            print(f"Going to Point {i+1}...")
+            # Move all axes
+            # Assuming point is list of 6 values
+            for axis_idx, val in enumerate(point):
+                if axis_idx >= 6: break
+                self.client.move_absolute(axis_idx, val)
+                # Small delay between axis commands to prevent buffer overflow if firmware is dumb
+                time.sleep(0.05) 
+            
+            # Wait for move to start (status might lag)
+            time.sleep(0.5) 
+            
+            # Wait for IDLE
+            # We rely on main loop to update status!
+            timeout = 30 # seconds safety
+            start_wait = time.time()
+            while self.client.status != "IDLE" and self.running:
+                if time.time() - start_wait > timeout:
+                    print("Timeout waiting for IDLE")
+                    break
+                time.sleep(0.1)
+                
+            print(f"Reached Point {i+1}")
+            time.sleep(0.5) # Pause at point?
+
+        print("Path execution finished.")
 
     def delete_path(self, name):
         self.path_manager.delete_path(name)

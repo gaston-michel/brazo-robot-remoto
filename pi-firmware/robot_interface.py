@@ -286,6 +286,15 @@ class RobotApp:
         self.running = True
         
         self._init_ui()
+        self._hide_cursor()
+
+    def _hide_cursor(self):
+        # Attempt to hide the blinking cursor on the main console (tty1)
+        try:
+            with open('/dev/tty1', 'w') as f:
+                f.write('\033[?25l') # VT100 Hide Cursor
+        except Exception as e:
+            print(f"Note: Could not hide cursor on /dev/tty1: {e}")
 
     def _init_ui(self):
         # --- 1. Status Screen ---
@@ -821,6 +830,12 @@ class RobotApp:
             pass
         finally:
             self.client.disconnect()
+            # Try to restore cursor
+            try:
+                with open('/dev/tty1', 'w') as f:
+                    f.write('\033[?25h')
+            except:
+                pass
             print("Exiting...")
 
 if __name__ == "__main__":

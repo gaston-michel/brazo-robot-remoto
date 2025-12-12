@@ -11,6 +11,182 @@ SERIAL_PORT = '/dev/ttyACM0' # Adjust if needed
 
 import os
 import mmap
+import json
+
+class PathManager:
+    def __init__(self, filename="paths.json"):
+        self.filename = filename
+        self.paths = {}
+        self.load()
+
+    def load(self):
+        if os.path.exists(self.filename):
+            try:
+                with open(self.filename, 'r') as f:
+                    self.paths = json.load(f)
+            except Exception as e:
+                print(f"Error loading paths: {e}")
+                self.paths = {}
+        else:
+            self.paths = {}
+
+    def save(self):
+        try:
+            with open(self.filename, 'w') as f:
+                json.dump(self.paths, f, indent=4)
+        except Exception as e:
+            print(f"Error saving paths: {e}")
+
+    def get_path_names(self):
+        return list(self.paths.keys())
+
+    def add_path(self, name, points=[]):
+        self.paths[name] = points
+        self.save()
+
+    def delete_path(self, name):
+        if name in self.paths:
+            del self.paths[name]
+            self.save()
+
+    def get_path(self, name):
+        return self.paths.get(name, [])
+
+class Keyboard:
+    def __init__(self, x, y, width, height, callback_enter, callback_cancel):
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+        self.callback_enter = callback_enter
+        self.callback_cancel = callback_cancel
+        self.visible = False
+        self.text = ""
+        self.keys = []
+        
+        # Simple QWERTY layout
+        rows = [
+            "1234567890",
+            "QWERTYUIOP",
+            "ASDFGHJKL",
+            "ZXCVBNM"
+        ]
+        
+        key_h = 40
+        key_w = 35
+        start_y = y + 50
+        
+        for r, row_str in enumerate(rows):
+            start_x = x + (width - (len(row_str) * key_w)) // 2
+            for c, char in enumerate(row_str):
+                self.keys.append(Button(start_x + c*key_w, start_y + r*key_h, key_w-2, key_h-2, char, 
+                                      callback=lambda k=char: self.on_key(k)))
+        
+        # Space, Backspace, Enter, Cancel
+        y_ctrl = start_y + 4 * key_h + 5
+        self.keys.append(Button(x + 20, y_ctrl, 60, 40, "BS", callback=self.on_bs, color=Theme.RED))
+        self.keys.append(Button(x + 90, y_ctrl, 150, 40, "SPACE", callback=lambda: self.on_key(" ")))
+        self.keys.append(Button(x + 250, y_ctrl, 80, 40, "OK", callback=self.on_enter, color=Theme.GREEN))
+        self.keys.append(Button(x + 340, y_ctrl, 60, 40, "X", callback=self.on_cancel, color=Theme.RED))
+
+    def on_key(self, char):
+        self.text += char
+
+    def on_bs(self):
+        self.text = self.text[:-1]
+
+    def on_enter(self):
+        if self.callback_enter:
+            self.callback_enter(self.text)
+        self.visible = False
+        self.text = ""
+
+    def on_cancel(self):
+        if self.callback_cancel:
+            self.callback_cancel()
+        self.visible = False
+        self.text = ""
+
+    def show(self):
+        self.visible = True
+        self.text = ""
+
+    def hide(self):
+        self.visible = False
+
+    def handle_touch(self, x, y):
+        if not self.visible: return False
+        # Consume all touches if visible (modal)
+        if self.x <= x <= self.x + self.width and self.y <= y <= self.y + self.height:
+            for k in self.keys:
+                if k.contains(x, y):
+                    k.on_click()
+                    return True
+            return True # Consumed but no button hit
+        return False
+
+    def draw(self, draw):
+        if not self.visible: return
+        # Background
+        draw.rectangle((self.x, self.y, self.x + self.width, self.y + self.height), fill=Theme.DARK_GRAY, outline=Theme.WHITE)
+        # Text Input Display
+        draw.rectangle((self.x+10, self.y+10, self.x+self.width-10, self.y+45), fill=Theme.BLACK, outline=Theme.WHITE)
+        draw.text((self.x+15, self.y+15), self.text, fill=Theme.WHITE, font=Theme.FONT_MAIN)
+        
+        for k in self.keys:
+            k.draw(draw)
+
+class Popup:
+    def __init__(self, x, y, width, height, title, options):
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+        self.title = title
+        self.visible = False
+        self.buttons = []
+        
+        btn_h = 50
+        y_start = y + 40
+        
+        for label, callback in options:
+            self.buttons.append(Button(x+20, y_start, width-40, btn_h, label, callback=self.wrap_callback(callback)))
+            y_start += btn_h + 10
+            
+    def wrap_callback(self, cb):
+        def wrapped():
+            cb()
+            self.hide()
+        return wrapped
+
+    def show(self):
+        self.visible = True
+
+    def hide(self):
+        self.visible = False
+
+    def handle_touch(self, x, y):
+        if not self.visible: return False
+        if self.x <= x <= self.x + self.width and self.y <= y <= self.y + self.height:
+            for b in self.buttons:
+                if b.contains(x, y):
+                    b.on_click()
+                    return True
+            return True
+        else:
+            # Click outside closes popup?
+            self.hide()
+            return True
+        return False
+
+    def draw(self, draw):
+        if not self.visible: return
+        # Overlay background (semi-transparent fake)
+        # We can't do real alpha easily with just draw, so just solid block
+        draw.rectangle((self.x, self.y, self.x + self.width, self.y + self.height), fill=Theme.DARK_GRAY, outline=Theme.CYAN)
+        draw.text((self.x+20, self.y+10), self.title, fill=Theme.CYAN, font=Theme.FONT_MAIN)
+        for b in self.buttons:
+            b.draw(draw)
 
 class FramebufferDevice:
     def __init__(self, path='/dev/fb1'):
@@ -226,7 +402,27 @@ class RobotApp:
         s_tests.add_widget(Button(180, 150, 140, 50, "Circle Test", callback=lambda: self.client.run_test(2)))
         s_tests.add_widget(Button(20, 210, 140, 50, "Full Range", callback=lambda: self.client.run_test(3)))
         
+        # Init PathManager
+        self.path_manager = PathManager()
+        
+        # Init Overlays
+        self.keyboard = Keyboard(0, 40, 480, 280, self.on_keyboard_enter, self.on_keyboard_cancel)
+        self.popup = None # Dynamic
+        
         self.screens.append(s_tests)
+
+        # --- 5. Paths Screen ---
+        self.s_paths = Screen("Paths") # Keep ref to update list
+        self.s_paths.add_widget(Label(10, 5, "Saved Paths", color=Theme.YELLOW))
+        
+        # New Path Button
+        self.s_paths.add_widget(Button(320, 5, 100, 40, "New Path", callback=self.on_new_path, color=Theme.GREEN))
+        
+        # List Container (Buttons will be regenerated)
+        self.path_buttons = []
+        self.refresh_paths_list()
+        
+        self.screens.append(self.s_paths)
 
         # --- Navigation Bar (Global) ---
         # REPLACED by Hamburger Menu
@@ -241,7 +437,8 @@ class RobotApp:
             ("Status", 0),
             ("Control", 1),
             ("Settings", 2),
-            ("Tests", 3)
+            ("Tests", 3),
+            ("Paths", 4)
         ]
         
         y_start = 40
@@ -263,7 +460,55 @@ class RobotApp:
         # set_screen logic handles simple switching.
         self.last_screen_idx = 0
 
+    def refresh_paths_list(self):
+        # Clear old dynamic widgets (except static ones)
+        # Static widgets: Label(0), Button(1) -> Index 0 and 1
+        # We need a better way to manage dynamic lists.
+        # For now, slice the list.
+        static_count = 2 
+        self.s_paths.widgets = self.s_paths.widgets[:static_count]
+        
+        names = self.path_manager.get_path_names()
+        y_start = 60
+        
+        if not names:
+            self.s_paths.add_widget(Label(20, 100, "No paths saved.", color=Theme.GRAY))
+        else:
+            for name in names:
+                # Truncate if too long?
+                display_name = (name[:20] + '..') if len(name) > 20 else name
+                btn = Button(20, y_start, 440, 40, display_name, callback=lambda n=name: self.on_path_select(n))
+                self.s_paths.add_widget(btn)
+                y_start += 50
+
+    def on_new_path(self):
+        self.keyboard.show()
+
+    def on_keyboard_enter(self, text):
+        if text:
+            # Create empty path details for now
+            self.path_manager.add_path(text, [])
+            self.refresh_paths_list()
+
+    def on_keyboard_cancel(self):
+        pass
+
+    def on_path_select(self, name):
+        # Show Popup Options
+        options = [
+            ("Edit Path", lambda: print(f"Edit {name}")), # Placeholder
+            ("Delete Path", lambda: self.delete_path(name))
+        ]
+        self.popup = Popup(90, 60, 300, 200, f"Path: {name}", options)
+        self.popup.show()
+
+    def delete_path(self, name):
+        self.path_manager.delete_path(name)
+        self.refresh_paths_list()
+
     def set_screen(self, idx):
+        if idx == 4: # Paths screen index
+            self.refresh_paths_list()
         self.current_screen_idx = idx
 
     def show_menu(self):
@@ -341,15 +586,28 @@ class RobotApp:
                 if touch_pos:
                     tx, ty = touch_pos
                     
-                    # Global Menu Button (Only if NOT on menu screen)
-                    if self.current_screen_idx != self.menu_screen_idx:
-                        if self.btn_menu.contains(tx, ty):
-                            self.btn_menu.on_click()
-                            # Skip processing screen widgets if menu clicked
-                            continue
+                    # Priority 1: Keyboard Overlay
+                    if self.keyboard.visible:
+                        self.keyboard.handle_touch(tx, ty)
+                        # Block other input
                     
-                    # Check Current Screen Widgets
-                    self.screens[self.current_screen_idx].handle_touch(tx, ty)
+                    # Priority 2: Popup Overlay
+                    elif self.popup and self.popup.visible:
+                        if not self.popup.handle_touch(tx, ty):
+                            # Clicked outside
+                            pass
+                        # Block other input
+                    
+                    else:
+                        # Global Menu Button (Only if NOT on menu screen)
+                        if self.current_screen_idx != self.menu_screen_idx:
+                            if self.btn_menu.contains(tx, ty):
+                                self.btn_menu.on_click()
+                                # Skip processing screen widgets if menu clicked
+                                continue
+                        
+                        # Check Current Screen Widgets
+                        self.screens[self.current_screen_idx].handle_touch(tx, ty)
 
                 # 3. Draw
                 # Update Status if connected
@@ -378,6 +636,14 @@ class RobotApp:
                 if self.current_screen_idx != self.menu_screen_idx:
                     self.btn_menu.draw(draw)
 
+                # Draw Popup Overlay
+                if self.popup and self.popup.visible:
+                    self.popup.draw(draw)
+
+                # Draw Keyboard Overlay
+                if self.keyboard.visible:
+                    self.keyboard.draw(draw)
+                    
                 # 4. Flip and Display
                 # Fix mirroring - Removed as user reported it is mirrored WITH this.
                 # image = image.transpose(Image.FLIP_LEFT_RIGHT)

@@ -414,6 +414,8 @@ class RobotApp:
         
         # Init PathManager
         self.path_manager = PathManager()
+        self.current_editing_path_name = None
+        self.current_editing_point_index = -1
         
         # Init Overlays
         self.keyboard = Keyboard(0, 40, 480, 280, self.on_keyboard_enter, self.on_keyboard_cancel)
@@ -424,15 +426,41 @@ class RobotApp:
         # --- 5. Paths Screen ---
         self.s_paths = Screen("Paths") # Keep ref to update list
         self.s_paths.add_widget(Label(10, 5, "Saved Paths", color=Theme.YELLOW))
-        
-        # New Path Button
         self.s_paths.add_widget(Button(320, 5, 100, 40, "New Path", callback=self.on_new_path, color=Theme.GREEN))
-        
-        # List Container (Buttons will be regenerated)
-        self.path_buttons = []
-        self.refresh_paths_list()
-        
         self.screens.append(self.s_paths)
+        
+        # --- 6. Path Details Screen (Points List) ---
+        self.s_path_details = Screen("Path Details")
+        self.s_path_details.add_widget(Label(10, 5, "Path Points", color=Theme.YELLOW))
+        self.s_path_details.add_widget(Button(320, 5, 130, 40, "Add Point", callback=self.on_add_point, color=Theme.GREEN))
+        self.s_path_details.add_widget(Button(380, 270, 80, 40, "Back", callback=lambda: self.set_screen(4), color=Theme.RED))
+        self.screens.append(self.s_path_details)
+
+        # --- 7. Point Edit Screen (Jog & Save) ---
+        self.s_point_edit = Screen("Edit Point")
+        self.s_point_edit.add_widget(Label(10, 5, "Adjust Position", color=Theme.YELLOW))
+        
+        # Live Coords Labels (for Edit Screen)
+        self.lbl_edit_axes = []
+        axes_names = ["X", "Y", "Z", "A", "B", "C"]
+        for i, name in enumerate(axes_names):
+            col = i // 3
+            row = i % 3
+            x_pos = 10 + col * 160
+            y_pos = 40 + row * 25
+            lbl = Label(x_pos, y_pos, f"{name}: 0.00", color=Theme.WHITE, font=Theme.FONT_SMALL)
+            self.lbl_edit_axes.append(lbl)
+            self.s_point_edit.add_widget(lbl)
+            
+            # Simple Jog Controls (Smaller to fit)
+            # +/- buttons next to label
+            self.s_point_edit.add_widget(Button(x_pos + 90, y_pos-2, 30, 25, "-", callback=lambda idx=i: self.move_axis(idx, -50))) # Smaller step
+            self.s_point_edit.add_widget(Button(x_pos + 125, y_pos-2, 30, 25, "+", callback=lambda idx=i: self.move_axis(idx, 50)))
+
+        self.s_point_edit.add_widget(Button(20, 260, 120, 50, "Save Point", callback=self.save_point, color=Theme.GREEN))
+        self.s_point_edit.add_widget(Button(160, 260, 120, 50, "Cancel", callback=lambda: self.set_screen(5), color=Theme.RED)) # Back to Details
+        
+        self.screens.append(self.s_point_edit)
 
         # --- Navigation Bar (Global) ---
         # REPLACED by Hamburger Menu
@@ -471,12 +499,8 @@ class RobotApp:
         self.last_screen_idx = 0
 
     def refresh_paths_list(self):
-        # Clear old dynamic widgets (except static ones)
-        # Static widgets: Label(0), Button(1) -> Index 0 and 1
-        # We need a better way to manage dynamic lists.
-        # For now, slice the list.
-        static_count = 2 
-        self.s_paths.widgets = self.s_paths.widgets[:static_count]
+        # Keep static widgets (Label + Button) = 2
+        self.s_paths.widgets = self.s_paths.widgets[:2]
         
         names = self.path_manager.get_path_names()
         y_start = 60
@@ -485,18 +509,84 @@ class RobotApp:
             self.s_paths.add_widget(Label(20, 100, "No paths saved.", color=Theme.GRAY))
         else:
             for name in names:
-                # Truncate if too long?
                 display_name = (name[:20] + '..') if len(name) > 20 else name
                 btn = Button(20, y_start, 440, 40, display_name, callback=lambda n=name: self.on_path_select(n))
                 self.s_paths.add_widget(btn)
                 y_start += 50
+
+    def refresh_path_details(self):
+        # Keep static widgets (Label + Add + Back) = 3
+        self.s_path_details.widgets = self.s_path_details.widgets[:3]
+        
+        # Update Title
+        self.s_path_details.widgets[0].text = f"Path: {self.current_editing_path_name}"
+        
+        points = self.path_manager.get_path(self.current_editing_path_name)
+        y_start = 60
+        
+        if not points:
+            self.s_path_details.add_widget(Label(20, 100, "No points in path.", color=Theme.GRAY))
+        else:
+            for i, p in enumerate(points):
+                # Format: P1: X:10 Y:20 ...
+                # Just show first 3 axes for brevity or all if possible
+                txt = f"P{i+1}: " + " ".join([f"{v:.1f}" for v in p[:3]])
+                btn = Button(20, y_start, 440, 40, txt, callback=lambda idx=i: self.on_point_select(idx))
+                self.s_path_details.add_widget(btn)
+                y_start += 50
+
+    def on_point_select(self, index):
+        options = [
+            ("Edit Point", lambda: self.open_point_edit(index)),
+            ("Delete Point", lambda: self.delete_point(index))
+        ]
+        self.popup = Popup(90, 60, 300, 200, f"Point {index+1}", options)
+        self.popup.show()
+
+    def delete_point(self, index):
+        points = self.path_manager.get_path(self.current_editing_path_name)
+        if 0 <= index < len(points):
+            points.pop(index)
+            self.path_manager.add_path(self.current_editing_path_name, points) # Save
+            self.refresh_path_details()
+
+    def open_path_details(self, name):
+        self.current_editing_path_name = name
+        self.set_screen(5) # Path Details Index
+
+    def on_add_point(self):
+        self.open_point_edit(-1)
+
+    def open_point_edit(self, index):
+        self.current_editing_point_index = index
+        # If editing existing, maybe move robot there? 
+        # User request didn't specify, but usually safer NOT to auto-move.
+        # Just assume we want to Jog to NEW position or Adjust FROM current.
+        self.set_screen(6) # Point Edit Index
+
+    def save_point(self):
+        # Get current axes from client
+        current_pos = self.client.axes # [x, y, z, a, b, c]
+        
+        points = self.path_manager.get_path(self.current_editing_path_name)
+        
+        if self.current_editing_point_index == -1:
+            # Append
+            points.append(current_pos)
+        else:
+            # Update
+            if 0 <= self.current_editing_point_index < len(points):
+                points[self.current_editing_point_index] = current_pos
+        
+        self.path_manager.add_path(self.current_editing_path_name, points) # Save
+        # Return to Details
+        self.set_screen(5)
 
     def on_new_path(self):
         self.keyboard.show()
 
     def on_keyboard_enter(self, text):
         if text:
-            # Create empty path details for now
             self.path_manager.add_path(text, [])
             self.refresh_paths_list()
 
@@ -506,7 +596,7 @@ class RobotApp:
     def on_path_select(self, name):
         # Show Popup Options
         options = [
-            ("Edit Path", lambda: print(f"Edit {name}")), # Placeholder
+            ("Edit Path", lambda: self.open_path_details(name)), 
             ("Delete Path", lambda: self.delete_path(name))
         ]
         self.popup = Popup(90, 60, 300, 200, f"Path: {name}", options)
@@ -517,9 +607,12 @@ class RobotApp:
         self.refresh_paths_list()
 
     def set_screen(self, idx):
-        if idx == 4: # Paths screen index
-            self.refresh_paths_list()
         self.current_screen_idx = idx
+        if idx == 4: # Paths
+            self.refresh_paths_list()
+        elif idx == 5: # Path Details
+            self.refresh_path_details()
+        # idx 6 is Point Edit (updates live)
 
     def show_menu(self):
         self.last_screen_idx = self.current_screen_idx
@@ -628,6 +721,9 @@ class RobotApp:
                     self.lbl_state.text = f"State: {self.client.status}"
                     for i, val in enumerate(self.client.axes):
                         self.lbl_axes[i].text = f"{['X','Y','Z','A','B','C'][i]}: {val:.2f}"
+                        # Also update Edit Screen labels
+                        if hasattr(self, 'lbl_edit_axes') and i < len(self.lbl_edit_axes):
+                             self.lbl_edit_axes[i].text = f"{['X','Y','Z','A','B','C'][i]}: {val:.2f}"
                     
                     # Update Endstops
                     if hasattr(self.client, 'endstops') and len(self.client.endstops) >= 6:

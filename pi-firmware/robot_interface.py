@@ -114,6 +114,10 @@ class Keyboard:
     def hide(self):
         self.visible = False
 
+    def reset_keys(self):
+        for k in self.keys:
+            k.pressed = False
+
     def handle_touch(self, x, y):
         if not self.visible: return False
         # Consume all touches if visible (modal)
@@ -129,9 +133,15 @@ class Keyboard:
         if not self.visible: return
         # Background
         draw.rectangle((self.x, self.y, self.x + self.width, self.y + self.height), fill=Theme.DARK_GRAY, outline=Theme.WHITE)
+        
         # Text Input Display
         draw.rectangle((self.x+10, self.y+10, self.x+self.width-10, self.y+45), fill=Theme.BLACK, outline=Theme.WHITE)
-        draw.text((self.x+15, self.y+15), self.text, fill=Theme.WHITE, font=Theme.FONT_MAIN)
+        
+        # Cursor Logic (Blink every 0.5s)
+        cursor = "|" if int(time.time() * 2) % 2 == 0 else ""
+        display_text = self.text + cursor
+        
+        draw.text((self.x+15, self.y+15), display_text, fill=Theme.WHITE, font=Theme.FONT_MAIN)
         
         for k in self.keys:
             k.draw(draw)
@@ -657,6 +667,10 @@ class RobotApp:
                 for w in self.screens[self.current_screen_idx].widgets:
                     if isinstance(w, Button):
                         w.pressed = False
+                
+                # Also reset keyboard keys if visible
+                if self.keyboard.visible:
+                    self.keyboard.reset_keys()
 
         except KeyboardInterrupt:
             pass

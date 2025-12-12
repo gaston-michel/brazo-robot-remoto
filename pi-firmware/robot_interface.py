@@ -670,7 +670,11 @@ class RobotApp:
         self.lbl_connection.color = Theme.RED
 
     def move_axis(self, axis, steps):
-        self.client.move_relative(axis, steps)
+        # Use Absolute Positioning as requested
+        # Calculate target based on current known position
+        current_val = self.client.axes[axis]
+        target = current_val + steps
+        self.client.move_absolute(axis, target)
 
     def home_axis(self, axis):
         self.client.home_axis(axis)

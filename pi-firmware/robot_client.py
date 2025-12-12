@@ -63,6 +63,11 @@ class RobotClient:
         cmd = f"M{axis_idx+1}{steps}"
         return self.send_command(cmd)
 
+    def move_absolute(self, axis_idx, position):
+        # A<axis_1_based><position>
+        cmd = f"A{axis_idx+1}{position:.2f}"
+        return self.send_command(cmd)
+
     def home_axis(self, axis_idx):
         # H<axis_1_based>
         cmd = f"H{axis_idx+1}"

@@ -1,5 +1,6 @@
 """
 Robot Control Application - Main CTk Application Class.
+Minimalistic light theme.
 """
 import customtkinter as ctk
 import threading
@@ -11,6 +12,7 @@ from config import (
 )
 from robot_client import RobotClient
 from path_manager import PathManager
+from ui.theme import COLORS, FONTS
 from ui.tabs import ControlTab, SettingsTab, TestsTab, PathsTab
 
 
@@ -21,6 +23,7 @@ class RobotApp(ctk.CTk):
         super().__init__()
         
         self._configure_window()
+        self._configure_theme()
         self._init_services()
         self._build_ui()
         self._start_background_tasks()
@@ -35,9 +38,17 @@ class RobotApp(ctk.CTk):
         
         # Uncomment for fullscreen on Raspberry Pi:
         # self.attributes('-fullscreen', True)
+    
+    def _configure_theme(self):
+        """Configure CTk appearance for light minimalistic theme."""
+        # Set light mode
+        ctk.set_appearance_mode("light")
         
-        ctk.set_appearance_mode("dark")
+        # Use built-in theme as base (we override with our custom colors)
         ctk.set_default_color_theme("blue")
+        
+        # Set window background
+        self.configure(fg_color=COLORS["background"])
     
     def _init_services(self):
         """Initialize backend services."""
@@ -47,15 +58,27 @@ class RobotApp(ctk.CTk):
     
     def _build_ui(self):
         """Build the main UI structure."""
-        # Tab container
+        # Custom styled tab view
         self.tabview = ctk.CTkTabview(
             self,
-            width=WINDOW_WIDTH - 20,
-            height=WINDOW_HEIGHT - 20
+            width=WINDOW_WIDTH - 16,
+            height=WINDOW_HEIGHT - 16,
+            corner_radius=12,
+            fg_color=COLORS["background"],
+            segmented_button_fg_color=COLORS["surface"],
+            segmented_button_selected_color=COLORS["text_primary"],
+            segmented_button_selected_hover_color="#333333",
+            segmented_button_unselected_color=COLORS["surface"],
+            segmented_button_unselected_hover_color=COLORS["surface_hover"],
+            text_color=COLORS["text_primary"],
+            text_color_disabled=COLORS["text_muted"]
         )
-        self.tabview.pack(padx=10, pady=10, fill="both", expand=True)
+        self.tabview.pack(padx=8, pady=8, fill="both", expand=True)
         
-        # Create tabs and embed tab content
+        # Configure tab font
+        self.tabview._segmented_button.configure(font=FONTS["body"])
+        
+        # Create tabs
         self._create_tabs()
     
     def _create_tabs(self):

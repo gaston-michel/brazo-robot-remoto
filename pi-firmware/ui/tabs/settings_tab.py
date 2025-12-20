@@ -1,5 +1,6 @@
 """
 Settings Tab - Motion profile configuration.
+Minimalistic light theme.
 """
 import customtkinter as ctk
 
@@ -8,74 +9,126 @@ from config import (
     MIN_SPEED, MAX_SPEED,
     MIN_ACCEL, MAX_ACCEL
 )
+from ui.theme import (
+    COLORS, ICONS, DIMENSIONS,
+    get_button_config, get_frame_config, get_label_config, get_slider_config
+)
 
 
 class SettingsTab(ctk.CTkFrame):
     """Settings tab for speed and acceleration configuration."""
     
     def __init__(self, parent, robot_client):
-        super().__init__(parent)
+        super().__init__(parent, fg_color="transparent")
         self.client = robot_client
         
-        self._build_speed_control()
-        self._build_accel_control()
-        self._build_apply_button()
+        self._build_content()
     
-    def _build_speed_control(self):
-        """Build speed slider control."""
-        frame = ctk.CTkFrame(self)
-        frame.pack(fill="x", padx=10, pady=10)
+    def _build_content(self):
+        """Build settings content."""
+        # Main card
+        card = ctk.CTkFrame(self, **get_frame_config())
+        card.pack(fill="both", expand=True, padx=8, pady=8)
         
-        ctk.CTkLabel(frame, text="Speed:").pack(side="left", padx=5)
+        # Header
+        ctk.CTkLabel(
+            card,
+            text="Motion Profile",
+            **get_label_config("heading")
+        ).pack(anchor="w", padx=16, pady=(16, 12))
         
-        self.speed_slider = ctk.CTkSlider(
-            frame,
-            from_=MIN_SPEED,
-            to=MAX_SPEED,
-            number_of_steps=19
+        # Speed control
+        self._build_slider_row(
+            card,
+            label="Speed",
+            min_val=MIN_SPEED,
+            max_val=MAX_SPEED,
+            default=DEFAULT_SPEED,
+            unit="steps/s",
+            slider_attr="speed_slider",
+            label_attr="lbl_speed"
         )
-        self.speed_slider.set(DEFAULT_SPEED)
-        self.speed_slider.pack(side="left", fill="x", expand=True, padx=5)
         
-        self.lbl_speed = ctk.CTkLabel(frame, text=str(DEFAULT_SPEED))
-        self.lbl_speed.pack(side="left", padx=5)
-        
-        # Bind slider to label
-        self.speed_slider.configure(
-            command=lambda v: self.lbl_speed.configure(text=str(int(v)))
+        # Acceleration control
+        self._build_slider_row(
+            card,
+            label="Acceleration",
+            min_val=MIN_ACCEL,
+            max_val=MAX_ACCEL,
+            default=DEFAULT_ACCEL,
+            unit="steps/s²",
+            slider_attr="accel_slider",
+            label_attr="lbl_accel"
         )
-    
-    def _build_accel_control(self):
-        """Build acceleration slider control."""
-        frame = ctk.CTkFrame(self)
-        frame.pack(fill="x", padx=10, pady=10)
         
-        ctk.CTkLabel(frame, text="Accel:").pack(side="left", padx=5)
+        # Spacer
+        ctk.CTkFrame(card, fg_color="transparent", height=16).pack()
         
-        self.accel_slider = ctk.CTkSlider(
-            frame,
-            from_=MIN_ACCEL,
-            to=MAX_ACCEL,
-            number_of_steps=9
-        )
-        self.accel_slider.set(DEFAULT_ACCEL)
-        self.accel_slider.pack(side="left", fill="x", expand=True, padx=5)
+        # Apply button
+        btn_frame = ctk.CTkFrame(card, fg_color="transparent")
+        btn_frame.pack(fill="x", padx=16, pady=(8, 16))
         
-        self.lbl_accel = ctk.CTkLabel(frame, text=str(DEFAULT_ACCEL))
-        self.lbl_accel.pack(side="left", padx=5)
-        
-        # Bind slider to label
-        self.accel_slider.configure(
-            command=lambda v: self.lbl_accel.configure(text=str(int(v)))
-        )
-    
-    def _build_apply_button(self):
-        """Build apply profile button."""
         ctk.CTkButton(
-            self,
-            text="Apply Profile",
+            btn_frame,
+            text=f"{ICONS['check']} Apply",
+            width=120,
+            **get_button_config("primary"),
             command=self._apply_profile
-        ).pack(pady=20)
+        ).pack(side="right")
+    
+    def _build_slider_row(self, parent, label, min_val, max_val, default, unit, slider_attr, label_attr):
+        """Build a labeled slider row."""
+        row = ctk.CTkFrame(parent, fg_color="transparent")
+        row.pack(fill="x", padx=16, pady=8)
+        
+        # Label
+        label_frame = ctk.CTkFrame(row, fg_color="transparent", width=100)
+        label_frame.pack(side="left")
+        label_frame.pack_propagate(False)
+        
+        ctk.CTkLabel(
+            label_frame,
+            text=label,
+            **get_label_config()
+        ).pack(side="left")
+        
+        # Value display
+        value_frame = ctk.CTkFrame(row, fg_color="transparent", width=80)
+        value_frame.pack(side="right")
+        value_frame.pack_propagate(False)
+        
+        lbl_value = ctk.CTkLabel(
+            value_frame,
+            text=str(default),
+            **get_label_config("mono")
+        )
+        lbl_value.pack(side="left")
+        
+        ctk.CTkLabel(
+            value_frame,
+            text=f" {unit}",
+            **get_label_config("muted")
+        ).pack(side="left")
+        
+        setattr(self, label_attr, lbl_value)
+        
+        # Slider
+        slider = ctk.CTkSlider(
+            row,
+            from_=min_val,
+            to=max_val,
+            number_of_steps=int((max_val - min_val) / 100),
+            **get_slider_config()
+        )
+        slider.set(default)
+        slider.pack(side="left", fill="x", expand=True, padx=16)
+        
+        setattr(self, slider_attr, slider)
+        
+        # Bind slider to label update
+        slider.configure(
+            command=lambda v, lbl=lbl_value: lbl.configure(text=str(int(v)))
+        )
     
     def _apply_profile(self):
         """Send motion profile to robot."""

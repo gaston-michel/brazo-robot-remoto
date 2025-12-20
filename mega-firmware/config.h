@@ -5,11 +5,11 @@
 
 // ===== PINS CONFIGURATION =====
 // STEP and DIR pins for each of the 6 axes (1 to 6)
-static const uint8_t STEP_PINS[6] = {22, 24, 26, 28, 30, 32};
-static const uint8_t DIR_PINS[6]  = {23, 25, 27, 29, 31, 33};
+static const uint8_t STEP_PINS[6] = {54, 24, 26, 28, 30, 32};
+static const uint8_t DIR_PINS[6]  = {55, 25, 27, 29, 31, 33};
 
 // ENABLE pin: shared for all drivers (TB6600 and DRV8825 groups)
-static const uint8_t ENABLE_PIN = 40;  // HIGH = disabled, LOW = enabled
+static const uint8_t ENABLE_PIN = 38;  // HIGH = disabled, LOW = enabled
 
 // ===== ENDSTOP (LIMIT SWITCH) PINS =====
 // Two limit switches per axis: MIN and MAX for homing and safety

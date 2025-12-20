@@ -1,6 +1,6 @@
-#define STEP_PIN         43//54
-#define DIR_PIN          45//55
-#define ENABLE_PIN       47//38
+#define STEP_PIN         16
+#define DIR_PIN          17
+#define ENABLE_PIN       23
 
 #include "CustomStepper.h"
 
@@ -80,6 +80,7 @@ void loop() {
     stepper.enableOutputs();
     
     // Pequeño movimiento para verificar funcionamiento
+    debugPrintln("Movimiendo");
     stepper.move(200); // 200 pasos en una dirección
     
     unsigned long startTime = millis();
@@ -87,10 +88,12 @@ void loop() {
       stepper.run();
     }
     
-    delay(200);
+    delay(2000);
     
     // Volver a posición inicial
+    debugPrintln("Volviendo a posición inicial");
     stepper.move(-200);
+    delay(1000);
     startTime = millis();
     while (stepper.distanceToGo() != 0 && millis() - startTime < 2000) {
       stepper.run();

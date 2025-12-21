@@ -95,9 +95,9 @@ class AxisSlider(ctk.CTkFrame):
         range_val = self.max_value - self.min_value
         percentage = (self.current_value - self.min_value) / range_val if range_val > 0 else 0
         
-        # Calculate thumb width (min 15%, max 97%)
-        thumb_width = 0.15 + (percentage * 0.97)
-        thumb_width = max(0.15, min(0.97, thumb_width))
+        # Calculate thumb width (min 15%, max 98%)
+        thumb_width = 0.15 + (percentage * 0.985)
+        thumb_width = max(0.15, min(0.985, thumb_width))
         
         # Update thumb size
         self.thumb.place_configure(relwidth=thumb_width)

@@ -36,7 +36,7 @@ class SettingsTab(ctk.CTkFrame):
             card,
             text="Motion Profile",
             **get_label_config("heading")
-        ).pack(anchor="w", padx=16, pady=(16, 12))
+        ).pack(anchor="w", padx=16, pady=(16, 2))
         
         # Speed control
         self._build_setting_row(

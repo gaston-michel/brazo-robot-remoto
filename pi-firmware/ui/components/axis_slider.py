@@ -9,7 +9,7 @@ from ui.theme import COLORS, FONTS, DIMENSIONS
 class AxisSlider(ctk.CTkFrame):
     """Custom slider showing current value and max value with sliding thumb."""
     
-    def __init__(self, parent, max_value=360, on_value_change=None):
+    def __init__(self, parent, min_value=0, max_value=360, unit="°", step=None, on_value_change=None):
         super().__init__(
             parent,
             fg_color=COLORS["surface_hover"],  # Light gray track
@@ -17,8 +17,11 @@ class AxisSlider(ctk.CTkFrame):
             height=32
         )
         
+        self.min_value = min_value
         self.max_value = max_value
-        self.current_value = 0
+        self.unit = unit
+        self.step = step
+        self.current_value = min_value
         self.on_value_change = on_value_change
         
         self._build_ui()
@@ -29,7 +32,7 @@ class AxisSlider(ctk.CTkFrame):
         # Max value label (positioned away from edges to preserve rounded corners)
         self.lbl_max = tk.Label(
             self,
-            text=f"{self.max_value}°",
+            text=f"{self.max_value}{self.unit}",
             font=("Segoe UI", 11),
             fg=COLORS["text_muted"],
             bg=COLORS["surface_hover"],  # Match track
@@ -63,7 +66,7 @@ class AxisSlider(ctk.CTkFrame):
         # Current value label - placed ON the track, follows thumb
         self.lbl_current = tk.Label(
             self,
-            text="0°",
+            text=f"{self.min_value}{self.unit}",
             font=("Segoe UI Semibold", 11),
             fg=COLORS["text_primary"],
             bg=COLORS["surface"]  # Match thumb (white)
@@ -88,8 +91,11 @@ class AxisSlider(ctk.CTkFrame):
     
     def _update_display(self):
         """Update the visual display based on current value."""
-        # Calculate thumb width (min 5%, max 97%)
-        percentage = self.current_value / self.max_value if self.max_value > 0 else 0
+        # Calculate percentage based on min-max range
+        range_val = self.max_value - self.min_value
+        percentage = (self.current_value - self.min_value) / range_val if range_val > 0 else 0
+        
+        # Calculate thumb width (min 15%, max 97%)
         thumb_width = 0.15 + (percentage * 0.97)
         thumb_width = max(0.15, min(0.97, thumb_width))
         
@@ -97,11 +103,21 @@ class AxisSlider(ctk.CTkFrame):
         self.thumb.place_configure(relwidth=thumb_width)
         
         # Update value text
-        self.lbl_current.configure(text=f"{self.current_value:.1f}°")
+        if self.step and isinstance(self.step, int):
+            text = f"{int(self.current_value)}{self.unit}"
+        else:
+            text = f"{self.current_value:.1f}{self.unit}"
+        
+        self.lbl_current.configure(text=text)
     
     def set_value(self, value, callback=False):
         """Set the current value."""
-        self.current_value = max(0, min(self.max_value, value))
+        # Apply step snapping if configured
+        if self.step:
+            steps = round((value - self.min_value) / self.step)
+            value = self.min_value + (steps * self.step)
+            
+        self.current_value = max(self.min_value, min(self.max_value, value))
         self._update_display()
         if callback and self.on_value_change:
             self.on_value_change(self.current_value)
@@ -127,7 +143,8 @@ class AxisSlider(ctk.CTkFrame):
         track_width = self.winfo_width()
         if track_width > 0:
             percentage = min(1.0, max(0, widget_x / track_width))
-            new_value = percentage * self.max_value
+            range_val = self.max_value - self.min_value
+            new_value = self.min_value + (percentage * range_val)
             self.set_value(new_value, callback=False)
     
     def _on_click(self, event):
@@ -144,7 +161,8 @@ class AxisSlider(ctk.CTkFrame):
         track_width = self.winfo_width()
         if track_width > 0:
             percentage = min(1.0, max(0, event.x / track_width))
-            new_value = percentage * self.max_value
+            range_val = self.max_value - self.min_value
+            new_value = self.min_value + (percentage * range_val)
             self.set_value(new_value)
             
             if self.on_value_change:

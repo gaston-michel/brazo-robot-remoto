@@ -10,9 +10,10 @@ from config import (
     MIN_ACCEL, MAX_ACCEL
 )
 from ui.theme import (
-    COLORS, ICONS, DIMENSIONS,
-    get_button_config, get_frame_config, get_label_config, get_slider_config
+    COLORS, ICONS, DIMENSIONS, FONTS,
+    get_button_config, get_frame_config, get_label_config
 )
+from ui.components.axis_slider import AxisSlider
 
 
 class SettingsTab(ctk.CTkFrame):
@@ -38,27 +39,27 @@ class SettingsTab(ctk.CTkFrame):
         ).pack(anchor="w", padx=16, pady=(16, 12))
         
         # Speed control
-        self._build_slider_row(
+        self._build_setting_row(
             card,
             label="Speed",
             min_val=MIN_SPEED,
             max_val=MAX_SPEED,
             default=DEFAULT_SPEED,
-            unit="steps/s",
-            slider_attr="speed_slider",
-            label_attr="lbl_speed"
+            unit="/s",
+            step=100,
+            attr_name="speed_slider"
         )
         
         # Acceleration control
-        self._build_slider_row(
+        self._build_setting_row(
             card,
             label="Acceleration",
             min_val=MIN_ACCEL,
             max_val=MAX_ACCEL,
             default=DEFAULT_ACCEL,
-            unit="steps/s²",
-            slider_attr="accel_slider",
-            label_attr="lbl_accel"
+            unit="/s²",
+            step=100,
+            attr_name="accel_slider"
         )
         
         # Spacer
@@ -76,62 +77,35 @@ class SettingsTab(ctk.CTkFrame):
             command=self._apply_profile
         ).pack(side="right")
     
-    def _build_slider_row(self, parent, label, min_val, max_val, default, unit, slider_attr, label_attr):
-        """Build a labeled slider row."""
+    def _build_setting_row(self, parent, label, min_val, max_val, default, unit, step, attr_name):
+        """Build a setting row with AxisSlider."""
         row = ctk.CTkFrame(parent, fg_color="transparent")
         row.pack(fill="x", padx=16, pady=8)
         
-        # Label
-        label_frame = ctk.CTkFrame(row, fg_color="transparent", width=100)
-        label_frame.pack(side="left")
-        label_frame.pack_propagate(False)
-        
+        # Label (Bold)
         ctk.CTkLabel(
-            label_frame,
+            row,
             text=label,
-            **get_label_config()
-        ).pack(side="left")
-        
-        # Value display
-        value_frame = ctk.CTkFrame(row, fg_color="transparent", width=80)
-        value_frame.pack(side="right")
-        value_frame.pack_propagate(False)
-        
-        lbl_value = ctk.CTkLabel(
-            value_frame,
-            text=str(default),
-            **get_label_config("mono")
-        )
-        lbl_value.pack(side="left")
-        
-        ctk.CTkLabel(
-            value_frame,
-            text=f" {unit}",
-            **get_label_config("muted")
-        ).pack(side="left")
-        
-        setattr(self, label_attr, lbl_value)
+            font=FONTS["body_medium"],  # Bold font
+            text_color=COLORS["text_primary"]
+        ).pack(anchor="w", pady=(0, 4))
         
         # Slider
-        slider = ctk.CTkSlider(
+        slider = AxisSlider(
             row,
-            from_=min_val,
-            to=max_val,
-            number_of_steps=int((max_val - min_val) / 100),
-            **get_slider_config()
+            min_value=min_val,
+            max_value=max_val,
+            unit=unit,
+            step=step
         )
-        slider.set(default)
-        slider.pack(side="left", fill="x", expand=True, padx=16)
+        slider.set_value(default)
+        slider.pack(fill="x")
         
-        setattr(self, slider_attr, slider)
-        
-        # Bind slider to label update
-        slider.configure(
-            command=lambda v, lbl=lbl_value: lbl.configure(text=str(int(v)))
-        )
+        setattr(self, attr_name, slider)
     
     def _apply_profile(self):
         """Send motion profile to robot."""
-        speed = int(self.speed_slider.get())
-        accel = int(self.accel_slider.get())
+        # Getting value from AxisSlider
+        speed = int(self.speed_slider.get_value())
+        accel = int(self.accel_slider.get_value())
         self.client.set_profile(speed, accel)

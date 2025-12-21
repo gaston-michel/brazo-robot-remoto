@@ -67,12 +67,14 @@ ICONS = {
 }
 
 # --- Typography ---
+# Clean sans-serif fonts similar to reference design
 FONTS = {
-    "heading": ("Segoe UI", 16, "bold"),
-    "body": ("Segoe UI", 13),
-    "body_bold": ("Segoe UI", 13, "bold"),
-    "small": ("Segoe UI", 11),
-    "mono": ("Consolas", 12),
+    "heading": ("Segoe UI Semibold", 15),
+    "body": ("Segoe UI", 12),
+    "body_medium": ("Segoe UI Semibold", 12),
+    "small": ("Segoe UI", 10),
+    "mono": ("Consolas", 11),
+    "tab": ("Segoe UI Semibold", 11),  # For tab labels
 }
 
 # --- Dimensions ---

@@ -1,10 +1,11 @@
 """
 Robot Control Application - Main CTk Application Class.
-Minimalistic light theme.
+Minimalistic light theme with icon tabs.
 """
 import customtkinter as ctk
 import threading
 import time
+import os
 
 from config import (
     WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_TITLE,
@@ -12,8 +13,13 @@ from config import (
 )
 from robot_client import RobotClient
 from path_manager import PathManager
-from ui.theme import COLORS, FONTS
+from ui.theme import COLORS
+from ui.components import IconTabBar
 from ui.tabs import ControlTab, SettingsTab, TestsTab, PathsTab
+
+
+# Icon paths
+ASSETS_DIR = os.path.join(os.path.dirname(__file__), "assets", "icons")
 
 
 class RobotApp(ctk.CTk):
@@ -41,13 +47,8 @@ class RobotApp(ctk.CTk):
     
     def _configure_theme(self):
         """Configure CTk appearance for light minimalistic theme."""
-        # Set light mode
         ctk.set_appearance_mode("light")
-        
-        # Use built-in theme as base (we override with our custom colors)
         ctk.set_default_color_theme("blue")
-        
-        # Set window background
         self.configure(fg_color=COLORS["background"])
     
     def _init_services(self):
@@ -58,50 +59,37 @@ class RobotApp(ctk.CTk):
     
     def _build_ui(self):
         """Build the main UI structure."""
-        # Custom styled tab view
-        self.tabview = ctk.CTkTabview(
-            self,
-            width=WINDOW_WIDTH - 16,
-            height=WINDOW_HEIGHT - 16,
-            corner_radius=12,
-            fg_color=COLORS["background"],
-            segmented_button_fg_color=COLORS["surface"],
-            segmented_button_selected_color=COLORS["text_primary"],
-            segmented_button_selected_hover_color="#333333",
-            segmented_button_unselected_color=COLORS["surface"],
-            segmented_button_unselected_hover_color=COLORS["surface_hover"],
-            text_color=COLORS["text_primary"],
-            text_color_disabled=COLORS["text_muted"]
-        )
-        self.tabview.pack(padx=8, pady=8, fill="both", expand=True)
+        # Define tabs with icons
+        tabs = [
+            ("Control", os.path.join(ASSETS_DIR, "control.png"), self._build_control_tab),
+            ("Settings", os.path.join(ASSETS_DIR, "settings.png"), self._build_settings_tab),
+            ("Tests", os.path.join(ASSETS_DIR, "tests.png"), self._build_tests_tab),
+            ("Paths", os.path.join(ASSETS_DIR, "paths.png"), self._build_paths_tab),
+        ]
         
-        # Configure tab font
-        self.tabview._segmented_button.configure(font=FONTS["body"])
-        
-        # Create tabs
-        self._create_tabs()
+        # Create custom icon tab bar
+        self.tab_bar = IconTabBar(self, tabs)
+        self.tab_bar.pack(fill="both", expand=True, padx=2, pady=2)
     
-    def _create_tabs(self):
-        """Create and populate tab views."""
-        # Control Tab
-        tab_control = self.tabview.add("Control")
-        self.control_tab = ControlTab(tab_control, self.client)
-        self.control_tab.pack(fill="both", expand=True)
-        
-        # Settings Tab
-        tab_settings = self.tabview.add("Settings")
-        self.settings_tab = SettingsTab(tab_settings, self.client)
-        self.settings_tab.pack(fill="both", expand=True)
-        
-        # Tests Tab
-        tab_tests = self.tabview.add("Tests")
-        self.tests_tab = TestsTab(tab_tests, self.client)
-        self.tests_tab.pack(fill="both", expand=True)
-        
-        # Paths Tab
-        tab_paths = self.tabview.add("Paths")
-        self.paths_tab = PathsTab(tab_paths, self.path_manager, self.client)
-        self.paths_tab.pack(fill="both", expand=True)
+    def _build_control_tab(self, parent):
+        """Build control tab content."""
+        self.control_tab = ControlTab(parent, self.client)
+        return self.control_tab
+    
+    def _build_settings_tab(self, parent):
+        """Build settings tab content."""
+        self.settings_tab = SettingsTab(parent, self.client)
+        return self.settings_tab
+    
+    def _build_tests_tab(self, parent):
+        """Build tests tab content."""
+        self.tests_tab = TestsTab(parent, self.client)
+        return self.tests_tab
+    
+    def _build_paths_tab(self, parent):
+        """Build paths tab content."""
+        self.paths_tab = PathsTab(parent, self.path_manager, self.client)
+        return self.paths_tab
     
     def _start_background_tasks(self):
         """Start background worker threads."""
@@ -116,16 +104,16 @@ class RobotApp(ctk.CTk):
         while self.running:
             if self.client.connected:
                 self.client.update_status()
-                # Schedule UI update on main thread
                 self.after(0, self._update_ui_status)
             time.sleep(STATUS_POLL_INTERVAL)
     
     def _update_ui_status(self):
         """Update UI components with current robot status."""
-        self.control_tab.update_status(
-            self.client.status,
-            self.client.axes
-        )
+        if hasattr(self, 'control_tab'):
+            self.control_tab.update_status(
+                self.client.status,
+                self.client.axes
+            )
     
     def _on_close(self):
         """Clean up resources on application close."""

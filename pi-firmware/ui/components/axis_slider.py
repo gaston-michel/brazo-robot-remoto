@@ -77,8 +77,14 @@ class AxisSlider(ctk.CTkFrame):
         self.lbl_current.bind("<B1-Motion>", self._on_drag_from_label)
         self.lbl_current.bind("<Button-1>", self._on_click)
         self.lbl_grip.bind("<B1-Motion>", self._on_drag_from_label)
+        self.lbl_grip.bind("<B1-Motion>", self._on_drag_from_label)
         self.lbl_grip.bind("<Button-1>", self._on_click)
         self.bind("<Button-1>", self._on_track_click)
+        
+        # Bind release events
+        self.thumb.bind("<ButtonRelease-1>", self._on_release)
+        self.lbl_current.bind("<ButtonRelease-1>", self._on_release)
+        self.lbl_grip.bind("<ButtonRelease-1>", self._on_release)
     
     def _update_display(self):
         """Update the visual display based on current value."""
@@ -93,10 +99,12 @@ class AxisSlider(ctk.CTkFrame):
         # Update value text
         self.lbl_current.configure(text=f"{self.current_value:.1f}°")
     
-    def set_value(self, value):
+    def set_value(self, value, callback=False):
         """Set the current value."""
         self.current_value = max(0, min(self.max_value, value))
         self._update_display()
+        if callback and self.on_value_change:
+            self.on_value_change(self.current_value)
     
     def get_value(self):
         """Get the current value."""
@@ -120,15 +128,17 @@ class AxisSlider(ctk.CTkFrame):
         if track_width > 0:
             percentage = min(1.0, max(0, widget_x / track_width))
             new_value = percentage * self.max_value
-            self.set_value(new_value)
-            
-            if self.on_value_change:
-                self.on_value_change(self.current_value)
+            self.set_value(new_value, callback=False)
     
     def _on_click(self, event):
         """Handle thumb click."""
         pass  # Just for starting drag
     
+    def _on_release(self, event):
+        """Handle mouse release to trigger value change."""
+        if self.on_value_change:
+            self.on_value_change(self.current_value)
+
     def _on_track_click(self, event):
         """Handle click on track to jump to position."""
         track_width = self.winfo_width()

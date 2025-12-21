@@ -42,8 +42,9 @@ class RobotApp(ctk.CTk):
         self.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}")
         self.resizable(False, False)
         
+        
         # Uncomment for fullscreen on Raspberry Pi:
-        # self.attributes('-fullscreen', True)
+        self.attributes('-fullscreen', True)
     
     def _configure_theme(self):
         """Configure CTk appearance for light minimalistic theme."""

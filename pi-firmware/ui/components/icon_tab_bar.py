@@ -36,8 +36,8 @@ class IconTabBar(ctk.CTkFrame):
     
     def _build_tab_bar(self):
         """Build the tab button bar."""
-        self.tab_bar = ctk.CTkFrame(self, fg_color=COLORS["background"], height=40)
-        self.tab_bar.pack(fill="x", padx=8, pady=(4, 0))
+        self.tab_bar = ctk.CTkFrame(self, fg_color=COLORS["background"], height=30)
+        self.tab_bar.pack(fill="x", padx=4, pady=(2, 0))
         self.tab_bar.pack_propagate(False)
         
         # Center the buttons
@@ -60,7 +60,7 @@ class IconTabBar(ctk.CTkFrame):
                 icon_image = ctk.CTkImage(
                     light_image=pil_image,
                     dark_image=pil_image,
-                    size=(16, 16)
+                    size=(14, 14)
                 )
             except Exception as e:
                 print(f"Error loading icon {icon_path}: {e}")
@@ -70,9 +70,9 @@ class IconTabBar(ctk.CTkFrame):
             text=name,
             image=icon_image,
             compound="left",  # Icon on left of text
-            width=90,
-            height=32,
-            corner_radius=16,  # Pill shape
+            width=80,
+            height=26,
+            corner_radius=13,  # Pill shape
             border_width=0,
             font=FONTS["tab"],
             # Default unselected style

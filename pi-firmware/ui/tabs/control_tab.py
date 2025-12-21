@@ -9,6 +9,8 @@ from ui.theme import (
     COLORS, ICONS, FONTS, DIMENSIONS,
     get_button_config, get_frame_config, get_label_config
 )
+from ui.components import ConnectionSelector
+from ui.components.axis_slider import AxisSlider
 
 
 class ControlTab(ctk.CTkFrame):
@@ -17,113 +19,88 @@ class ControlTab(ctk.CTkFrame):
     def __init__(self, parent, robot_client):
         super().__init__(parent, fg_color="transparent")
         self.client = robot_client
-        self.axis_labels = []
+        self.axis_sliders = []  # AxisSlider components
         self.axis_rows = []
         
         self._build_header()
         self._build_axis_controls()
     
     def _build_header(self):
-        """Build the connection status header."""
-        header = ctk.CTkFrame(self, **get_frame_config())
-        header.pack(fill="x", padx=8, pady=(8, 4))
+        """Build the header with connection selector and E-Stop."""
+        header = ctk.CTkFrame(self, fg_color="transparent")
+        header.pack(fill="x", padx=6, pady=(4, 2))
         
-        # Status indicator
-        status_frame = ctk.CTkFrame(header, fg_color="transparent")
-        status_frame.pack(side="left", padx=12, pady=10)
-        
-        self.status_dot = ctk.CTkLabel(
-            status_frame,
-            text=ICONS["disconnected"],
-            font=("Segoe UI", 12),
-            text_color=COLORS["text_muted"]
+        # Connection selector (left side) - no expand, auto width
+        self.connection_selector = ConnectionSelector(
+            header,
+            self.client,
+            on_connection_change=self._on_connection_change
         )
-        self.status_dot.pack(side="left", padx=(0, 6))
+        self.connection_selector.pack(side="left")
         
-        self.lbl_status = ctk.CTkLabel(
-            status_frame,
-            text="Disconnected",
-            **get_label_config("secondary")
-        )
-        self.lbl_status.pack(side="left")
-        
-        # Action buttons (right side)
-        btn_frame = ctk.CTkFrame(header, fg_color="transparent")
-        btn_frame.pack(side="right", padx=8, pady=8)
-        
-        # E-Stop button
+        # E-Stop button (right side) - compact size
         self.btn_estop = ctk.CTkButton(
-            btn_frame,
-            text=f"{ICONS['stop']} Stop",
-            width=70,
-            **get_button_config("danger"),
+            header,
+            text=f"{ICONS['stop']} STOP",
+            width=55,
+            height=30,
+            corner_radius=DIMENSIONS["corner_radius_small"],
+            fg_color=COLORS["danger"],
+            hover_color=COLORS["danger_hover"],
+            text_color=COLORS["surface"],
+            font=("Segoe UI Semibold", 10),  # Bold
             command=self._emergency_stop
         )
-        self.btn_estop.pack(side="right", padx=(8, 0))
-        
-        # Connect button
-        self.btn_connect = ctk.CTkButton(
-            btn_frame,
-            text=f"{ICONS['connect']} Connect",
-            width=100,
-            **get_button_config("primary"),
-            command=self._toggle_connection
-        )
-        self.btn_connect.pack(side="right")
+        self.btn_estop.pack(side="right", padx=(4, 0))
     
     def _build_axis_controls(self):
         """Build axis control panel."""
         # Container frame
-        axes_container = ctk.CTkFrame(self, **get_frame_config())
-        axes_container.pack(fill="both", expand=True, padx=8, pady=4)
+        axes_container = ctk.CTkFrame(
+            self, 
+            fg_color=COLORS["surface"],
+            corner_radius=DIMENSIONS["corner_radius"],
+            border_width=1,
+            border_color=COLORS["border"]
+        )
+        axes_container.pack(fill="both", expand=True, padx=6, pady=2)
         
-        # Section header
-        header_frame = ctk.CTkFrame(axes_container, fg_color="transparent")
-        header_frame.pack(fill="x", padx=12, pady=(12, 8))
+        # Configure grid rows to be equal weight
+        for i in range(len(AXIS_NAMES)):
+            axes_container.grid_rowconfigure(i, weight=1)
+        axes_container.grid_columnconfigure(0, weight=1)
         
-        ctk.CTkLabel(
-            header_frame,
-            text="Axis Control",
-            **get_label_config("heading")
-        ).pack(side="left")
-        
-        # Axis rows
+        # Axis rows using grid
         for idx, name in enumerate(AXIS_NAMES):
             self._create_axis_row(axes_container, idx, name)
     
     def _create_axis_row(self, parent, axis_idx, axis_name):
         """Create a single axis control row."""
         row = ctk.CTkFrame(parent, fg_color="transparent")
-        row.pack(fill="x", padx=12, pady=4)
+        row.grid(row=axis_idx, column=0, sticky="ew", padx=12, pady=2)
         self.axis_rows.append(row)
         
-        # Axis icon and name
-        name_frame = ctk.CTkFrame(row, fg_color="transparent", width=100)
+        # Axis name (bold, no icon)
+        name_frame = ctk.CTkFrame(row, fg_color="transparent", width=90)
         name_frame.pack(side="left")
         name_frame.pack_propagate(False)
         
         ctk.CTkLabel(
             name_frame,
-            text=ICONS["axis"],
-            font=("Segoe UI", 11),
-            text_color=COLORS["text_muted"]
-        ).pack(side="left", padx=(0, 6))
-        
-        ctk.CTkLabel(
-            name_frame,
             text=axis_name,
-            **get_label_config()
-        ).pack(side="left")
+            font=FONTS["body_medium"],
+            text_color=COLORS["text_primary"],
+            anchor="w"
+        ).pack(side="left", fill="x", expand=True)
         
-        # Position value
-        lbl_pos = ctk.CTkLabel(
+        # Position slider (replaces simple label)
+        slider = AxisSlider(
             row,
-            text="0.00",
-            width=60,
-            **get_label_config("mono")
+            max_value=360,
+            on_value_change=lambda v, idx=axis_idx: self._on_slider_change(idx, v)
         )
-        lbl_pos.pack(side="left", padx=(8, 16))
-        self.axis_labels.append(lbl_pos)
+        slider.pack(side="left", fill="x", expand=True, padx=(8, 8))
+        self.axis_sliders.append(slider)
         
         # Control buttons (right side)
         btn_frame = ctk.CTkFrame(row, fg_color="transparent")
@@ -155,29 +132,15 @@ class ControlTab(ctk.CTkFrame):
     
     # --- Actions ---
     
-    def _toggle_connection(self):
-        """Connect or disconnect from robot."""
-        if self.client.connected:
-            self.client.disconnect()
-            self.btn_connect.configure(text=f"{ICONS['connect']} Connect")
-            self._set_connected_state(False)
-        else:
-            if self.client.connect():
-                self.btn_connect.configure(text=f"{ICONS['disconnect']} Disconnect")
-                self._set_connected_state(True)
+    def _on_connection_change(self, connected):
+        """Handle connection state changes from the selector."""
+        # Could add additional logic here if needed
+        pass
     
-    def _set_connected_state(self, connected):
-        """Update UI for connection state."""
-        if connected:
-            self.status_dot.configure(
-                text=ICONS["connected"],
-                text_color=COLORS["success"]
-            )
-        else:
-            self.status_dot.configure(
-                text=ICONS["disconnected"],
-                text_color=COLORS["text_muted"]
-            )
+    def _on_slider_change(self, axis_idx, value):
+        """Handle slider value change."""
+        # Move axis to the slider position
+        self.client.move_absolute(axis_idx, value)
     
     def _emergency_stop(self):
         """Trigger emergency stop."""
@@ -195,8 +158,12 @@ class ControlTab(ctk.CTkFrame):
     
     def update_status(self, status, axis_positions):
         """Update display with current robot status."""
-        self.lbl_status.configure(text=status)
+        # Update connection selector status
+        if hasattr(self, 'connection_selector'):
+            self.connection_selector.update_status(status)
         
-        for idx, lbl in enumerate(self.axis_labels):
+        # Update axis sliders with positions
+        for idx, slider in enumerate(self.axis_sliders):
             if idx < len(axis_positions):
-                lbl.configure(text=f"{axis_positions[idx]:.2f}")
+                slider.set_value(axis_positions[idx])
+

@@ -142,7 +142,7 @@ def get_button_config(style="default"):
             "height": DIMENSIONS["icon_button_size"],
             "fg_color": "transparent",
             "hover_color": COLORS["surface_hover"],
-            "text_color": COLORS["text_primary"],
+            "text_color": COLORS["text_muted"],  # Gray icons
             "font": ("Segoe UI", 16),
         },
     }
